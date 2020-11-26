@@ -34,7 +34,7 @@ source("helper.R") # <- Still need to check helper.R
 shinyServer(function(input, output, session) {
   
   #------------------------------------------------
-  #CREATE OBJECTS TO STORE MODEL AND SCENARIO STATE
+  #CREATE OBJECTS TO STORE MODEL (AND SCENARIO STATE)
   #------------------------------------------------
   #Reactive object to store current state that interface responds to
   model <- reactiveValues(status = NULL, concepts = NULL, relations = NULL)
@@ -50,13 +50,13 @@ shinyServer(function(input, output, session) {
       direction = "",
       strength = "",
       description = "")
-  #Create a reactive object to store scenario data in
-  scenario <- 
-    reactiveValues(status = NULL, values = NULL, history = NULL)
-  #Create a reactive object to represent scenario table
-  scenariotable <- reactiveValues(values = NULL)
-  #Create a reactive object to store names of scenarios
-  scenariolist <- reactiveValues(valid = "", invalid = "", run = "", all = "")
+  # #Create a reactive object to store scenario data in
+  # scenario <- 
+  #   reactiveValues(status = NULL, values = NULL, history = NULL)
+  # #Create a reactive object to represent scenario table
+  # scenariotable <- reactiveValues(values = NULL)
+  # #Create a reactive object to store names of scenarios
+  # scenariolist <- reactiveValues(valid = "", invalid = "", run = "", all = "")
   #Create a reactive object to keep track of various conditions
   is <- reactiveValues(newconcept = FALSE)
 
@@ -89,30 +89,30 @@ shinyServer(function(input, output, session) {
   undoRelationEdit <- function() {
     swapState()
   }
-  #Function to save last scenario state
-  saveLastScenarioState <- function() {
-    scenario$history <- scenario$values
-  }
-  #Function to swap scenario history and present values
-  swapScenarioState <- function() {
-    Values <- scenario$values
-    scenario$values <- scenario$history
-    scenario$history <- Values
-  }
-  #Function to undo scenario edit
-  undoScenarioEdit <- function() {
-    swapScenarioState()
-  }
-  #Function to update scenario table with scenario values
-  updateScenarioTable <- function() {
-    scenariotable$values <- scenario$values
-  }
+  # #Function to save last scenario state
+  # saveLastScenarioState <- function() {
+  #   scenario$history <- scenario$values
+  # }
+  # #Function to swap scenario history and present values
+  # swapScenarioState <- function() {
+  #   Values <- scenario$values
+  #   scenario$values <- scenario$history
+  #   scenario$history <- Values
+  # }
+  # #Function to undo scenario edit
+  # undoScenarioEdit <- function() {
+  #   swapScenarioState()
+  # }
+  # #Function to update scenario table with scenario values
+  # updateScenarioTable <- function() {
+  #   scenariotable$values <- scenario$values
+  # }
   #Function to update concept form inputs
   updateConceptForm <- function(RowNum) {
     updateTextInput(session, "conceptName",
                     value = model$concepts$concept[RowNum])
     updateTextInput(session, "conceptID",
-                    value = model$concepts$id[RowNum])
+                    value = model$concepts$concept_id[RowNum])
     updateTextInput(session, "conceptDesc",
                     value = model$concepts$description[RowNum])
     updateTextInput(session, "minValue",
@@ -127,8 +127,8 @@ shinyServer(function(input, output, session) {
   
   #Function to update relation form causal and affected variables -- the rest updates based on other observes
   updateRelationForm <- function(RowNum) { 
-    causal_var <- unlist(lapply(model$relations,function(x){rep(x$concept_id,length(x$affects))}))
-    affects_var <- unlist(lapply(model$relations,function(x){sapply(x$affects,"[[","concept_id")}))
+    causal_vars <- extract_rel(model$relations, "concept_id")
+    affects_vars <- extract_rel(model$relations, "concept_id", level="affected")
     updateSelectInput(session, inputId = "causalConcept",
                       selected = causal_var[RowNum]
     )
@@ -137,16 +137,16 @@ shinyServer(function(input, output, session) {
     )
   }
   
-  #Function to update scenario concept form inputs
-  updateScenarioForm <- function(RowNum) {
-    output$scenarioConcept <- renderText({scenariotable$values$name[RowNum]})
-    updateTextInput(session, "conceptStartValue",
-                    value = scenariotable$values$startvalue[RowNum])
-    updateTextInput(session, "conceptStartChange",
-                    value = scenariotable$values$startchange[RowNum])
-    updateTextInput(session, "conceptValuesDescription",
-                    value = scenariotable$values$description[RowNum])
-  }
+  # #Function to update scenario concept form inputs
+  # updateScenarioForm <- function(RowNum) {
+  #   output$scenarioConcept <- renderText({scenariotable$values$name[RowNum]})
+  #   updateTextInput(session, "conceptStartValue",
+  #                   value = scenariotable$values$startvalue[RowNum])
+  #   updateTextInput(session, "conceptStartChange",
+  #                   value = scenariotable$values$startchange[RowNum])
+  #   updateTextInput(session, "conceptValuesDescription",
+  #                   value = scenariotable$values$description[RowNum])
+  # }
   #Function to clear reactive data when when changing model
   resetModel <- function(){
     history$status = NULL
@@ -160,14 +160,14 @@ shinyServer(function(input, output, session) {
     effects$direction <- ""
     effects$strength <- ""
     effects$description <- ""
-    scenario$status <- NULL
-    scenario$values <- NULL
-    scenario$history <- NULL
-    scenariotable$values <- NULL
-    scenariolist$valid <- ""
-    scenariolist$invalid <- ""
-    scenariolist$all <- ""
-    scenariolist$run <- ""
+    # scenario$status <- NULL
+    # scenario$values <- NULL
+    # scenario$history <- NULL
+    # scenariotable$values <- NULL
+    # scenariolist$valid <- ""
+    # scenariolist$invalid <- ""
+    # scenariolist$all <- ""
+    # scenariolist$run <- ""
   }
   
   #--------------------------------------
@@ -179,7 +179,7 @@ shinyServer(function(input, output, session) {
       inputId = "modelFileName",
       selected = NULL,
       label = NULL,
-      choices = dir(path = "../models")[dir(path = "../models") != "templates"]
+      choices = dir(path = "./models")[dir(path = "./models") != "templates"]
     )
   })
   
@@ -199,7 +199,7 @@ shinyServer(function(input, output, session) {
     {
       if (input$modelAction == "select_xl") {
         #Check that a model name exists and is not a duplicate
-        ExistingModels_ <- dir("../models")
+        ExistingModels_ <- dir("./models")
         if (input$modelName == ""){ #Check that there is a model name
           createAlert(session = session, anchorId = "nonameAlert", alertId = "noname",
                       title = "Missing Name", 
@@ -345,7 +345,7 @@ shinyServer(function(input, output, session) {
       is$newconcept <- TRUE
       model$concepts <- model$concepts[c(1,1:nrow(model$concepts)),]
       model$concepts$concept[1] <- ""
-      model$concepts$id[1] <- ""
+      model$concepts$concept_id[1] <- ""
       model$concepts$description[1] <- ""
       model$concepts$values$min[1] <- ""
       model$concepts$values$max[1] <- ""
@@ -361,7 +361,7 @@ shinyServer(function(input, output, session) {
     {
       #Check whether if new concept and duplicate name or variable
       IsDupName <- input$conceptName %in% model$concepts$concept
-      IsDupVar <- input$conceptID %in% model$concepts$id
+      IsDupVar <- input$conceptID %in% model$concepts$concept_id
       if (is$newconcept & IsDupName) {
         createAlert(session = session, anchorId = "duplicateConceptName", 
                     title = "Duplicate Concept Name", 
@@ -379,7 +379,7 @@ shinyServer(function(input, output, session) {
       #Update model concepts
       RowNum <- input$conceptsTableEditing_rows_selected
       model$concepts$concept[RowNum] <- input$conceptName
-      model$concepts$id[RowNum] <- input$conceptID
+      model$concepts$concept_id[RowNum] <- input$conceptID
       model$concepts$description[RowNum] <- input$conceptDesc
       model$concepts$values$min[RowNum] <- input$minValue
       model$concepts$values$max[RowNum] <- input$maxValue
@@ -424,7 +424,7 @@ shinyServer(function(input, output, session) {
       saveLastState()
       #Modify/ update model concepts
       RowNum <- input$conceptsTableEditing_rows_selected
-      Var <- model$concepts$id[RowNum]
+      Var <- model$concepts$concept_id[RowNum]
       model$concepts <- model$concepts[-RowNum,]
       model$status$lastedit <- as.character(Sys.time())
 
@@ -499,7 +499,7 @@ shinyServer(function(input, output, session) {
     selectInput(
       inputId = "causalConcept",
       label = "Causal Concept",
-      choices = sort(model$concepts$id)
+      choices = sort(model$concepts$concept_id)
       #choices = sort(model$concepts$name)
     )
   })
@@ -508,7 +508,7 @@ shinyServer(function(input, output, session) {
     selectInput(
       inputId = "affectedConcept",
       label = "Affected Concept",
-      choices = sort(model$concepts$id)
+      choices = sort(model$concepts$concept_id)
       #choices = sort(model$concepts$name)
     )
   })
@@ -517,7 +517,9 @@ shinyServer(function(input, output, session) {
     # Note: right now the only difference (between this and the table that is displayed in the GUI 
     # is that full names are not used here. If eventually full names are used in the editing relations dropdowns
     # then this can be consolidated and used for the GUI too.
-    formatRelationTable(model$relations,model$concepts,use.full.names=FALSE,export=TRUE)
+    if (!is.null(model$relations)){
+      formatRelationTable(model$relations,model$concepts,use.full.names=FALSE,export=TRUE)
+    }
   })
 
   
@@ -598,14 +600,14 @@ shinyServer(function(input, output, session) {
       saveLastState()
       
       #Update Relation
-      #change concepts$name to concepts$id
+      #change concepts$name to concepts$concept_id
       CausalConcept <- 
-        model$concepts$id[model$concepts$id == input$causalConcept]
+        model$concepts$concept_id[model$concepts$concept_id == input$causalConcept]
       CausalConcepts_ <-
         unlist(lapply(model$relations, function(x) x$concept_id))
       CausalIdx <- which(CausalConcepts_ == CausalConcept)
       AffectedConcept <- 
-        model$concepts$id[model$concepts$id == input$affectedConcept]
+        model$concepts$concept_id[model$concepts$concept_id == input$affectedConcept]
       NewEffect_ls <-
         list(concept_id = AffectedConcept,
              direction = input$causalDirection,
@@ -642,14 +644,14 @@ shinyServer(function(input, output, session) {
       #Save last model state and relations inputs
       saveLastState()
       #Remove relation from model
-      #change concepts$name to concepts$id
+      #change concepts$name to concepts$concept_id
       CausalConcept <- 
-        model$concepts$id[model$concepts$id == input$causalConcept]
+        model$concepts$concept_id[model$concepts$concept_id == input$causalConcept]
       CausalConcepts_ <-
         unlist(lapply(model$relations, function(x) x$concept_id))
       CausalIdx <- which(CausalConcepts_ == CausalConcept)
       AffectedConcept <- 
-        model$concepts$id[model$concepts$id == input$affectedConcept]
+        model$concepts$concept_id[model$concepts$concept_id == input$affectedConcept]
       Effects_ls <- 
         model$relations[[CausalIdx]]$affects
       EffectIdx <- 

@@ -34,7 +34,7 @@
 #' @export
 initializeNewModel <- function(ModelName, Author) {
   #Create directory for model
-  NewDir <- file.path("../models", ModelName)
+  NewDir <- file.path("./models", ModelName)
   dir.create(NewDir)
   #Create and save a status list
   Attribution <- 
@@ -45,9 +45,9 @@ initializeNewModel <- function(ModelName, Author) {
                     lastedit = as.character(Sys.time()),
                     attribution = Attribution,
                     notes = character(0))
-  writeLines(toJSON(status_ls), file.path(NewDir, "status.json"))
+  writeLines(toJSON(status_ls, auto_unbox=TRUE), file.path(NewDir, "status.json"))
   #Copy and save the concept and relations template files
-  CopyDir <- "../models/templates"
+  CopyDir <- "./models/templates"
   FilesToCopy_ <- file.path(
     CopyDir, c("concepts.json", "relations.json")
   )
@@ -90,9 +90,9 @@ initializeNewModel <- function(ModelName, Author) {
 #' @return a list containing values for name, parent, created, and lastedit.
 #' @export
 initializeCopyModel <- function(ModelName, CopyModelName, Author, CopyScenarios = FALSE) {
-  NewDir <- file.path("../models", ModelName)
+  NewDir <- file.path("./models", ModelName)
   dir.create(NewDir)
-  CopyDir <- file.path("../models", CopyModelName)
+  CopyDir <- file.path("./models", CopyModelName)
   if(CopyScenarios) {
     FilesToCopy_ <- file.path(
       CopyDir, c("status.json", "concepts.json", "relations.json", "scenarios")
@@ -103,7 +103,7 @@ initializeCopyModel <- function(ModelName, CopyModelName, Author, CopyScenarios 
       ScenDir <- file.path(NewDir, "scenarios", sc)
       status_ls <- fromJSON(paste0(ScenDir, "/status.json"))
       status_ls$model <- ModelName
-      writeLines(toJSON(status_ls), file.path(ScenDir, "status.json"))
+      writeLines(toJSON(status_ls, auto_unbox=TRUE), file.path(ScenDir, "status.json"))
     }
   } else {
     FilesToCopy_ <- file.path(
@@ -131,7 +131,7 @@ initializeCopyModel <- function(ModelName, CopyModelName, Author, CopyScenarios 
   status_ls$lastedit <- as.character(Sys.time())
   status_ls$attribution <- c(Attribution, status_ls$attribution)
   status_ls$notes <- status_ls$notes
-  writeLines(toJSON(status_ls), file.path(NewDir, "status.json"))
+  writeLines(toJSON(status_ls, auto_unbox=TRUE), file.path(NewDir, "status.json"))
   status_ls
 }
 
@@ -150,7 +150,7 @@ initializeCopyModel <- function(ModelName, CopyModelName, Author, CopyScenarios 
 #' @return a list containing values for name, parent, created, and lastedit.
 #' @export
 loadModelStatus <- function(ModelName, Author = NULL){
-  ModelDir <-  file.path("../models", ModelName)
+  ModelDir <-  file.path("./models", ModelName)
   status_ls <- as.list(fromJSON(file.path(ModelDir, "status.json")))
   if (!is.null(Author)) {
     Attribution <- 
@@ -176,7 +176,7 @@ loadModelStatus <- function(ModelName, Author = NULL){
 #' @return a data frame containing the model concept information.
 #' @export
 loadModelConcepts <- function(ModelName){
-  ModelDir <-  file.path("../models", ModelName)
+  ModelDir <-  file.path("./models", ModelName)
   fromJSON(file.path(ModelDir, "concepts.json"))
 }
 
@@ -195,7 +195,7 @@ loadModelConcepts <- function(ModelName){
 #' @return a data frame containing the model relations information.
 #' @export
 loadModelRelations <- function(ModelName){
-  ModelDir <-  file.path("../models", ModelName)
+  ModelDir <-  file.path("./models", ModelName)
   fromJSON(file.path(ModelDir, "relations.json"), simplifyDataFrame = FALSE)
 }
 
@@ -218,10 +218,10 @@ loadModelRelations <- function(ModelName){
 #' @export
 saveModel <- function(ModelData) {
   ModelName <- ModelData$status$name
-  ModelDir <- file.path("../models", ModelName)
-  writeLines(prettify(toJSON(ModelData$status)), file.path(ModelDir, "status.json"))
-  writeLines(prettify(toJSON(ModelData$concepts)), file.path(ModelDir, "concepts.json"))
-  writeLines(prettify(toJSON(ModelData$relations)), file.path(ModelDir, "relations.json"))
+  ModelDir <- file.path("./models", ModelName)
+  writeLines(prettify(toJSON(ModelData$status, auto_unbox=TRUE)), file.path(ModelDir, "status.json"))
+  writeLines(prettify(toJSON(ModelData$concepts, auto_unbox=TRUE)), file.path(ModelDir, "concepts.json"))
+  writeLines(prettify(toJSON(ModelData$relations, auto_unbox=TRUE)), file.path(ModelDir, "relations.json"))
 }
 
 
@@ -250,16 +250,16 @@ saveModel <- function(ModelData) {
 formatConceptTable <- function(Concepts_df,export=FALSE) {
 
   if (export==FALSE){
-    df <- data.frame(Name = Concepts_df$concept,
-                     ID = Concepts_df$id,
+    df <- data.frame(Name = Concepts_df$name,
+                     ID = Concepts_df$concept_id,
                      Minimum = Concepts_df$values[["min"]],
                      Maximum = Concepts_df$values[["max"]],
-                     Group = Concepts_df$group,
+                     #Group = Concepts_df$group,
                      stringsAsFactors = FALSE)
   } else{ # untested; written 2019/05/20
-    df <- data.frame(Name = Concepts_df$concept,
-                     ID = Concepts_df$id,
-                     "Group or Type" = Concepts_df$group,
+    df <- data.frame(Name = Concepts_df$name,
+                     ID = Concepts_df$concept_id,
+                     #"Group or Type" = Concepts_df$group,
                      Description = Concepts_df$description,
                      Minimum = Concepts_df$values[["min"]],
                      Maximum = Concepts_df$values[["max"]],
@@ -269,6 +269,25 @@ formatConceptTable <- function(Concepts_df,export=FALSE) {
   }
   return(df)
 }
+
+
+#-----------------------------------
+# Extract vector of variables from relations list
+#-----------------------------------
+#' Extracts a vector of variables from the relations list
+#' @param Relations_list a list containing the relations data.
+#' @param var a list containing the relations data.
+#' @param level where in the nested list is this variable located? Is it a property of a causal variable, a group of causal vars, or an affected variable?
+#' @return a vector containing the data of interest 
+#' @export
+extract_rel <- function(Relations_list, var, level = "causal_link"){
+  switch(level, 
+         "causal_link" = unlist(lapply(Relations_list, function(a){lapply(a$affected_by, function(x){sapply(x$links, "[[", var)})})),
+         "causal_group" = unlist(lapply(Relations_list, function(a){lapply(a$affected_by, function(x){rep(x[[var]], length(x$links))})})),
+         "affected" = unlist(lapply(Relations_list, function(a){rep(a[[var]], sum(sapply(a$affected_by, function(x){length(x$links)})))}))
+  )
+}
+
 
 #----------------------------------
 #Format a Relation Table for Display
@@ -287,25 +306,28 @@ formatConceptTable <- function(Concepts_df,export=FALSE) {
 #' @return a data frame containing the relations data to be shown in a table.or exported
 #' @export
 formatRelationTable <- function(Relations_list,Concepts_df,export=FALSE,use.full.names=TRUE) {
-  name_key <- Concepts_df$concept
-  names(name_key) <- Concepts_df$id
-  causal_var <- unlist(lapply(Relations_list,function(x){rep(x$concept_id,length(x$affects))}))
-  affects_var <- unlist(lapply(Relations_list,function(x){sapply(x$affects,"[[","concept_id")}))
+  name_key <- Concepts_df$name
+  names(name_key) <- Concepts_df$concept_id
+  
+  causal_vars <- extract_rel(Relations_list, "concept_id")
+  affects_vars <- extract_rel(Relations_list, "concept_id", level="affected")
+  rel_ks <- extract_rel(Relations_list, "k", level="affected_var")
+  rel_types <- extract_rel(Relations_list, "type", level="causal_group")
   if (use.full.names){
-    df <- data.frame(From = name_key[causal_var],
-                     To = name_key[affects_var],
-                     Direction = unlist(lapply(Relations_list,function(x){sapply(x$affects,"[[","direction")})),
-                     Weight = unlist(lapply(Relations_list,function(x){sapply(x$affects,"[[","weight")})),
+    df <- data.frame(From = name_key[causal_vars],
+                     To = name_key[affects_vars],
+                     Direction = extract_rel(Relations_list, "direction"),
+                     Weight = extract_rel(Relations_list, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
   } else {
-    df <- data.frame(From = causal_var,
-                     To = affects_var,
-                     Direction = unlist(lapply(Relations_list,function(x){sapply(x$affects,"[[","direction")})),
-                     Weight = unlist(lapply(Relations_list,function(x){sapply(x$affects,"[[","weight")})),
+    df <- data.frame(From = causal_vars,
+                     To = affects_vars,
+                     Direction = extract_rel(Relations_list, "direction"),
+                     Weight = extract_rel(Relations_list, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
   }
   if (export){ # untested; written 2019/05/21
-    df$Description <- unlist(lapply(Relations_list,function(x){sapply(x$affects,"[[","description")}))
+    df$Description <- extract_rel(Relations_list, "description", level="causal_group")
   }
   return(df)
 }
@@ -314,12 +336,10 @@ formatRelationTable <- function(Relations_list,Concepts_df,export=FALSE,use.full
 #----------------------------------------------
 #Make an Adjacency Matrix from a Relations List
 #----------------------------------------------
-#' Creates an adjacency matrix from an FSDM relations list
+#' Creates an adjacency matrix 
+#' \code{makeAdjacencyMatrix} creates an adjacency matrix from a relations list
 #' 
-#' \code{makeAdjacencyMatrix} creates an adjacency matrix from an FSDM relations
-#' list
-#' 
-#' This function creates an adjacency matrix from an FSDM relations list. The
+#' This function creates an adjacency matrix from a relations list. The
 #' adjacency matrix is a square matrix with as many rows and columns as the
 #' number of concepts in the model. The rows and columns are named with the
 #' concept variable names. The rows represent the causal side of the
@@ -327,70 +347,45 @@ formatRelationTable <- function(Relations_list,Concepts_df,export=FALSE,use.full
 #' matrix are logicals with TRUE meaning that a relationship exists and FALSE
 #' meaning that it does not.
 #' 
-#' @param Relations_ls a list of FSDM relations
+#' @param Relations_ls a list of reslations
 #' @param Var_ a vector of concepts in the system (usually model$concepts$ID)
-#' @param Type a string identifying the type of matrix to create. "Logical"
-#' produces a matrix where the existence of a relationship is noted with TRUE
-#' and FALSE. "Values" produces a list of two matrices where one matrix 
-#' identifies the causal weitht of each relationship and a second matrix 
-#' identifies the causal direction of each relationship. 
-#' @return a matrix of logical values or string values
 #' @export
 makeAdjacencyMatrix <- function(Relations_ls, Var_, Type = "Logical") {
   # 2019/05/23: changed so that variables (Var_) is an input variable rather than defined through the relations list
   # e.g. if there is a concept that doesn't affect anything, it would be included here
   # Var_ <- unlist(lapply(Relations_ls, function(x) x$name)) 
-  #If type is "Logical" return a logical matrix
-  if (Type == "Logical") {
-    Affected_ls <- lapply(Relations_ls, function(x) {
-      Affected_ <- unlist(lapply(x$affects, function(y) y$concept_id))
-    })
-    names(Affected_ls) <- Var_
-    Relations_mx <- 
-      array(FALSE, 
-            dim = c(length(Var_), length(Var_)),
-            dimnames = list(Var_, Var_))
-    for (name in names(Affected_ls)) {
-      Relations_mx[name, Affected_ls[[name]]] <- TRUE
+    # Extract the relations and concepts from the data
+    rs <- Relations_ls
+    c_ids = Var_
+    
+    # Get all the variables associated with the edges 
+    # (names of columns in any links data frame except "concept_id")
+    edge_vars <- names(rs[1, "affected_by"][[1]]$links[[1]])
+    edge_vars <- edge_vars[edge_vars != "concept_id"]
+    
+    # Make a list of empty matrices, one for each of the edge variables in the data, plus the type of relationship (saved in "type" for each set of links)
+    mx <- array(NA, dim = c(length(c_ids), length(c_ids)), 
+                dimnames = list(c_ids, c_ids))
+    mx_list <- rep(list(mx), length(edge_vars) + 2)
+    names(mx_list) <- c(edge_vars, "type", "rel_group")
+    
+    # For number of relations present, find what is affecting it and for each edge variable
+    # enter its value in the corresponding adjacency matrices
+    for (i in 1:dim(rs)[1]){ 
+      id <- rs$concept_id[i]
+      infl_list <- rs[rs["concept_id"] == id,"affected_by"]
+      # Loop over all sets of links (Note: tfn data considers only 1 set)
+      for (j in 1:length(infl_list)){ 
+        links <- infl_list[[j]]$links[[1]] # a data frame of links in that set of influences
+        infls <- sapply(links$concept_id, function(x) which(c_ids == x))
+        for (e in edge_vars){
+          mx_list[[e]][infls, id] <- links[[e]]
+          mx_list[["type"]][infls, id] <- infl_list[[j]]$type # Corresponding type for that set of links (and/or etc.)
+          mx_list[["rel_group"]][infls, id] <- j
+        }
+      }
     }
-    return(Relations_mx)
-  }
-  #If type is "Values" return a list of matrices of direction and values
-  if (Type == "Values") {
-    #Matrix of effects directions    
-    # From list of relationship directions (Direction_ls), create a matrix where the rows and columns
-    # are ALL the variables. Similarly, relationship weights below.
-    Direction_ls <- lapply(Relations_ls, function(x) {
-      Direction_ <- unlist(lapply(x$affects, function(y) y$direction))
-      names(Direction_) <- unlist(lapply(x$affects, function(y) y$concept_id))
-      Direction_
-    })
-    names(Direction_ls) <- unlist(lapply(Relations_ls, function(x) x$concept_id)) #Var_
-    Direction_mx <- 
-      array(NA, 
-            dim = c(length(Var_), length(Var_)),
-            dimnames = list(Var_, Var_))
-    for (name in names(Direction_ls)) {
-      Direction_mx[name, names(Direction_ls[[name]])] <- Direction_ls[[name]]
-    }
-    #Matrix of effects weights
-    Weight_ls <- lapply(Relations_ls, function(x) {
-      Weight_ <- unlist(lapply(x$affects, function(y) y$weight))
-      names(Weight_) <- unlist(lapply(x$affects, function(y) y$concept_id))
-      Weight_
-    })
-    names(Weight_ls) <- unlist(lapply(Relations_ls, function(x) x$concept_id)) #Var_
-    Weight_mx <- 
-      array(NA, 
-            dim = c(length(Var_), length(Var_)),
-            dimnames = list(Var_, Var_))
-    for (name in names(Weight_ls)) {
-      Weight_mx[name, names(Weight_ls[[name]])] <- Weight_ls[[name]]
-    }
-    # View(Direction_mx)
-    # View(Weight_mx)
-    return(list(Direction = Direction_mx, Weight = Weight_mx))
-  }
+    return(mx_list)
 }
 
 
@@ -470,7 +465,7 @@ mapRelations <-
     #   FromConcept <- nameToVar(FromConcept)
     # }
     #Make a matrix of relations
-    Relations_mx <- makeAdjacencyMatrix(Model_ls$relations, Model_ls$concepts$ID, Type = "Values")$Direction[Nv,Nv]
+    Relations_mx <- makeAdjacencyMatrix(Model_ls$relations, Model_ls$concepts$ID, Type = "Values")$direction[Nv,Nv]
     #Function to select portion of matrix and return a matrix regardless of how
     #many rows and columns are selected
     selectMatrix <- function(Matrix, RowSelect, ColSelect) {
@@ -614,15 +609,15 @@ makeDot <-
     
     #Make matrices of relations and labels
     Cn <- Concepts_df$id
-    Relates_ls <- makeAdjacencyMatrix(Relations_ls, Cn, Type = "Values")
+    Relates_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
     Vals <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675,
               H = 0.75, VH = 0.95)
     Signs <- c(Positive = 1, Negative = -1)    
     Relates.CnCn <- 
-      apply(Relates_ls$Weight[Cn,Cn], 2, function(x) Vals[x]) *
-      apply(Relates_ls$Direction[Cn,Cn], 2, function(x) Signs[x])
+      apply(Relates_ls$weight[Cn,Cn], 2, function(x) Vals[x]) *
+      apply(Relates_ls$direction[Cn,Cn], 2, function(x) Signs[x])
     rownames(Relates.CnCn) <- Cn
-    Labels.CnCn <- Relates_ls$Weight[Cn,Cn]
+    Labels.CnCn <- Relates_ls$weight[Cn,Cn]
     #Create row and column indices for selected row and column groups
     if (RowGroup == "All") {
       Cr <- Cn
@@ -684,358 +679,6 @@ makeDot <-
     Dot_
   }
 
-
-###############################################
-#---------------------------------------------#
-# INITIALIZING, LOADING, AND SAVING SCENARIOS #
-#---------------------------------------------#
-###############################################
-
-#--------------------------
-#Initialize an New Scenario
-#--------------------------
-#' Initialize a new scenario.
-#'
-#' \code{initializeNewScenario} initializes a new scenario by creating a 
-#' directory with the scenario name and returns a list containing scenario
-#' status and scenario values components.
-#'
-#' This function initializes a new scenario with the given scenario name. It 
-#' does this by creating a directory with the scenario name and a data frame
-#' to store the scenario data. This list is returned and the components are
-#' used in the scenario reactive object. The components are also saved in the
-#' scenario directory in JSON format.
-#'
-#' @param ModelName a string representation of the model name.
-#' @param ScenarioName a string representation of the scenario name.
-#' @param Concepts_df a data frame containing the concept data.
-#' @return a list containing a status list and a scenario values data frame.
-#' @export
-initializeNewScenario <- function(ModelName, ScenarioName, Concepts_df) {
-  #Create directory for scenario
-  NewDir <- paste0("../models/", ModelName, "/scenarios/", ScenarioName)
-  dir.create(NewDir)
-  #Create and save a status list
-  status_ls <- list(name = ScenarioName,
-                    model = ModelName,
-                    parent = "none",
-                    created = as.character(Sys.time()),
-                    lastedit = as.character(Sys.time()),
-                    validated = ""
-  )
-  writeLines(toJSON(status_ls), file.path(NewDir, "status.json"))
-  #Create and save a scenario values data frame
-  Concepts_ <- Concepts_df$id
-  values_df <-
-    data.frame(name = Concepts_,
-               startvalue = rep("NA", length(Concepts_)),
-               startchange = rep("NA", length(Concepts_)),
-               description = rep("", length(Concepts_)),
-               stringsAsFactors = FALSE
-    )
-  writeLines(toJSON(values_df), file.path(NewDir, "scenario.json"))
-  #Return the list of status and values
-  list(status = status_ls,
-       values = values_df)
-}
-
-
-#---------------------------------------------------------
-#Modify an Existing Scenario to Conform with Model Changes
-#---------------------------------------------------------
-#' Modify a scenario to conform with a changed model
-#' 
-#' \code{conformScenario} modifies an existing scenario definition so that it
-#' conforms to the current model definition.
-#' 
-#' This function modifies a scenario definition so that it conforms to the
-#' the current model definition. It does this my removing entries for concepts
-#' that are not part of the model and by adding "blank" entries for concepts
-#' that are in the model but not in the scenario. The function is designed to be
-#' called by the 'initializeCopyScenario' function and the 'loadScenario'
-#' function. Note that the function does not check whether the values for 
-#' concepts are consistent with the concept definition. The user needs to check
-#' consistency of values and validation will check for inconsistencies as well.
-#' 
-#' @param ConceptVars_ a string vector of the variable names of model concepts
-#' @param ScenarioValues_df a data frame of scenario concept values
-#' @return a data frame of scenario concept values that is consistent with the
-#' model concepts
-#' @export
-conformScenario <- function(ConceptVars_, ScenarioValues_df){
-  #Identify scenario concepts in model
-  IsConceptInModel <- ScenarioValues_df$name %in% ConceptVars_
-  #Identify model concepts not in scenario
-  MissingConcepts_ <- 
-    ConceptVars_[!(ConceptVars_ %in% ScenarioValues_df$name)]
-  #If any concepts are missing from the scenario, add blank entries
-  if (length(MissingConcepts_) != 0) {
-    AddValues_df <- 
-      data.frame(
-        name = MissingConcepts_,
-        startvalue = rep("NA", length(MissingConcepts_)),
-        startchange = rep("NA", length(MissingConcepts_)),
-        description = rep("", length(MissingConcepts_)),
-        stringsAsFactors = FALSE
-      )
-    Result_df <- 
-      rbind(
-        ScenarioValues_df[IsConceptInModel,], 
-        AddValues_df
-      )
-  } else {
-    Result_df <- ScenarioValues_df[IsConceptInModel,]
-  }
-  #Return the modified scenario data frame
-  Result_df
-}
-
-
-#---------------------------------------------------------
-#Initialize a New Scenario by Copying an Existing Scenario
-#---------------------------------------------------------
-#' Initialize a new scenario by copying an existing scenario.
-#'
-#' \code{initializeCopyScenario} initializes a new scenario by creating a 
-#' directory with the scenario name and copying the contents of an existing 
-#' scenario into that directory. Creates and saves a scenario status list.
-#'
-#' This function initializes a new scenario with the given scenario name from an
-#' existing scenario. It does this by creating a directory with the scenario 
-#' name and copying the scenario files for an existing scenario into it. It 
-#' creates a new scenario status list which identifies the name of the new 
-#' scenario and the name of the parent scenario it is a copy of.
-#'
-#' @param ModelName a string representation of the model name.
-#' @param ConceptVars_ a string vector of the model concept variable names.
-#' @param ScenarioName a string representation of the new scenario name.
-#' @param CopyScenarioName a string representation of the name of the scenario
-#' to copy.
-#' @return a list containing a status list and a scenario values data frame.
-#' @export
-initializeCopyScenario <- 
-  function(ModelName, ConceptVars_, ScenarioName, CopyScenarioName) {
-    #Create directory for scenario
-    NewDir <- file.path("../models", ModelName, "scenarios", ScenarioName)
-    dir.create(NewDir)
-    #Load the scenario values file to be copied and make conform to model
-    CopyFromDir <- file.path("../models", ModelName, "scenarios", CopyScenarioName)
-    CopyValues_df <- fromJSON(file.path(CopyFromDir, "scenario.json"))
-    values_df <- conformScenario(ConceptVars_, CopyValues_df)
-    #Save the scenario values
-    writeLines(toJSON(values_df), file.path(NewDir, "scenario.json"))
-    #Create and save the status list
-    status_ls <- list(name = ScenarioName,
-                      model = ModelName,
-                      parent = CopyScenarioName,
-                      created = as.character(Sys.time()),
-                      lastedit = as.character(Sys.time()),
-                      validated = ""
-    )
-    writeLines(toJSON(status_ls), file.path(NewDir, "status.json"))
-    #Return the list of status and values
-    list(status = status_ls,
-         values = values_df)
-  }
-
-#-------------------------
-#Load an Existing Scenario
-#-------------------------
-#' Loads the files for a scenario.
-#'
-#' \code{loadScenario} reads the files that contain scenario information
-#' and returns a list containing scenario status and values information.
-#'
-#' This function reads the scenario status file and scenario file for a 
-#' specified scenario and returns a list whose components are a list containing
-#' the scenario status information and a data frame containing the scenario
-#' values information.
-#'
-#' @param ModelName a string representation of the model name.
-#' @param ConceptVars_ a string vector of the model concept variable names.
-#' @param ScenarioName a string representation of the scenario name.
-#' @return a list containing a status list and a scenario values data frame.
-#' @export
-loadScenario <- function(ModelName, ConceptVars_, ScenarioFileName){
-  #Identify the scenario directory
-  Dir <- paste0("../models/", ModelName, "/scenarios/", ScenarioFileName)
-  #Load the scenario values file to be copied and make conform to model
-  CopyValues_df <- fromJSON(file.path(Dir, "scenario.json"))
-  values_df <- conformScenario(ConceptVars_, CopyValues_df)
-  #Load the scenario status
-  status_ls <- fromJSON(paste0(Dir, "/status.json"))
-  #Return list of the scenario status and values
-  list(status = status_ls,
-       values = values_df)
-}
-
-#-------------
-#Save Scenario
-#-------------
-#' Saves all the scenario components as JSON files.
-#'
-#' \code{saveScenario} saves the scenario status and values as JSON files.
-#'
-#' This function saves the scenario status and values as JSON files in the
-#' scenario directory for the model. The status information is saved in the 
-#' status.json file and the scenario values are saved in the scenarios.json
-#' file.
-#'
-#' @param ScenarioData a list having status and values components.
-#' @return no return value. Has side effect of saving the scenario status list
-#' and values data frame.
-#' @export
-saveScenario <- function(ScenarioData) {
-  ModelName <- ScenarioData$status$model
-  ScenarioName <- ScenarioData$status$name
-  ScenarioDir <- file.path("../models", ModelName, "scenarios", ScenarioName)
-  writeLines(toJSON(ScenarioData$status), file.path(ScenarioDir, "status.json"))
-  writeLines(toJSON(ScenarioData$values), file.path(ScenarioDir, "scenario.json"))
-}
-
-#-----------------
-#Validate Scenario
-#-----------------
-#' Validates scenario with model.
-#' 
-#' \code{validateScenario} validates the scenario with the model.
-#' 
-#' This function compares the values for the scenario with the model and
-#' determines whether the scenario has values for all concepts, whether the
-#' values are consistent with the value ranges for the concepts, and whether
-#' the starting changes are consistent with the ranges and don't vary too many.
-#' 
-#' @param Values_df a data frame containing the scenario values
-#' @param Concepts_df a data frame containing the model concepts
-#' @return a list having three components, a logical identifying whether the
-#' scenario validates, a list of all validation errors, and a character string
-#' with the time stamp.
-#' @export
-validateScenario <- function(Values_df, Concepts_df) {
-  Cn <- Concepts_df$id
-  #Convert Values_df to analyze
-  Values_mx <- as.matrix(Values_df[, c("startvalue", "startchange")])
-  Values_mx[Values_mx == "NA"] <- NA
-  Values_mx <- apply(Values_mx, 2, function(x) as.numeric(x))
-  rownames(Values_mx) <- Values_df$name
-  #Extract the value range for all concepts
-  ValRng_df <- Concepts_df$values[,c("min","max")]
-  ValRng_df$min <- as.numeric(ValRng_df$min)
-  ValRng_df$max <- as.numeric(ValRng_df$max)
-  rownames(ValRng_df) <- Cn
-  #Initialize errors
-  HasErrors <- FALSE
-  Errors_ <- c("Scenario is not valid for the following reasons:")
-  #Check that all rownames correspond to concept names
-  if (!setequal(Values_df$name, Concepts_df$id)) {
-    ErrMsg <- "The variable names for the scenario don't all correspond to the concepts variable names in the model."
-    Errors_ <- c(Errors_, "\n", ErrMsg)
-    HasErrors <- TRUE
-  }
-  #Check that there are numeric values for all startvalue
-  if (any(is.na(Values_mx[, "startvalue"]))) {
-    ErrMsg <- "One or more values for 'startvalue' are NA. Numeric entries are required for all values."
-    Errors_ <- c(Errors_, "\n", ErrMsg)
-    HasErrors <- TRUE
-  }
-  #Check that the values for StartValue are within range
-  for (cn in Cn) {
-    StartVal <- as.numeric(Values_mx[cn, "startvalue"])
-    MinVal <- as.numeric(ValRng_df[cn,"min"])
-    MaxVal <- as.numeric(ValRng_df[cn,"max"])
-    if (!is.na(StartVal)) {
-      if ((StartVal < MinVal) | (StartVal > MaxVal)) {
-        ErrMsg <- paste("'startvalue' value for", cn, "is outside the range of acceptable values.")
-        Errors_ <- c(Errors_, "\n", ErrMsg)
-        HasErrors <- TRUE
-      }
-    }
-  }
-  #Check whether there is at least one startchange that is not NA
-  if (all(is.na(Values_df$startchange))) {
-    ErrMsg <- "All values for 'startchange' are NA. At least one must be a number."
-    Errors_ <- c(Errors_, "\n", ErrMsg)
-    HasErrors <- TRUE
-  }
-  #Check whether all the startchange values are within range
-  for (cn in Cn) {
-    ChangeVal <- as.numeric(Values_mx[cn, "startchange"])
-    MinVal <- as.numeric(ValRng_df[cn,"min"])
-    MaxVal <- as.numeric(ValRng_df[cn,"max"])
-    if (!is.na(ChangeVal)) {
-      if ((ChangeVal < MinVal) | (ChangeVal > MaxVal)) {
-        ErrMsg <- paste("'startchange' value for", cn, "is outside the range of acceptable values.")
-        Errors_ <- c(Errors_, "\n", ErrMsg)
-        HasErrors <- TRUE
-      }
-    }
-  }
-  list(
-    Valid = !HasErrors,
-    Errors = Errors_,
-    TimeStamp = as.character(Sys.time())
-  )
-}
-
-
-#--------------
-#List Scenarios
-#--------------
-#' Creates a list of scenarios and whether validated.
-#' 
-#' \code{listScenarios} creates a list of scenarios and identifies which have
-#' been validated.
-#' 
-#' This function creates a list of scenarios for a model and checks whether each
-#' scenario has been validated. Scenarios are identified as being validated if
-#' they were successfully validated and if the validation time stamp is later
-#' than the 'lastedit' time stamp for the model and the 'lastedit' time stamp
-#' for the scenario. The returned list has two components. The first is a vector
-#' containing the names that have been successfully validated. The second is a
-#' vector of the names that have not been validated; either because validation
-#' was not successful or because changes were made to the model or the scenario
-#' after validation was done.
-#' 
-#' @param ModelName the name of the model
-#' @return a list having four components, a vector of the names of scenarios 
-#' that were properly validated, a vector of the names of scenarios that were
-#' not validated, a vector of the names of all scenarios, and a vector
-#' of the names of scenarios that have outputs.
-#' @export
-listScenarios <- function(ModelName) {
-  ScenariosDir <- file.path("../models", ModelName, "scenarios")
-  Sc <- dir(ScenariosDir)
-  if (length(Sc) == 0) {
-    return(list(
-      Valid = "",
-      Invalid = "",
-      All = "",
-      Run = ""
-    ))
-  } else {
-    ModelEdited <- loadModelStatus(ModelName)$lastedit
-    Validation_mx <- sapply(Sc, function(x) {
-      ScenDir <- file.path(ScenariosDir, x)
-      ScenValidated <- fromJSON(file.path(ScenDir, "status.json"))$validated
-      ScenEdited <- fromJSON(file.path(ScenDir, "status.json"))$lastedit
-      c(
-        Validated = ScenValidated != "",
-        AfterModelEdited = ScenValidated > ModelEdited,
-        AfterScenarioEdited = ScenValidated > ScenEdited
-      )
-    })
-    HasOutputs_ <- names(sapply(Sc, function(x) {
-      file.exists(file.path(ScenariosDir, x, "Outputs_ls.RData"))
-    }))
-    Valid_Sc <- apply(Validation_mx, 2, all)
-    return(list(
-      Valid = names(Valid_Sc)[Valid_Sc],
-      Invalid = names(Valid_Sc)[!Valid_Sc],
-      All = Sc,
-      Run = HasOutputs_
-    ))
-  }
-}
 
 
 ###############################################
@@ -1118,11 +761,11 @@ createFuzzyModel <-
                           Type = "Values")
     #Adjacency matrix of numeric values
     Relates.CnCn <- 
-      apply(Relations_ls$Weight[Cn,Cn], 2, function(x) Vals[x]) *
-      apply(Relations_ls$Direction[Cn,Cn], 2, function(x) Signs[x])
+      apply(Relations_ls$weight[Cn,Cn], 2, function(x) Vals[x]) *
+      apply(Relations_ls$direction[Cn,Cn], 2, function(x) Signs[x])
     rownames(Relates.CnCn) <- Cn
     #Make labels for graph
-    Labels.CnCn <- Relations_ls$Weight[Cn,Cn]
+    Labels.CnCn <- Relations_ls$weight[Cn,Cn]
     #Extract the value range for all concepts
     ValRng_df <- Concepts_df$values[,c("min","max")]
     ValRng_df$min <- as.numeric(ValRng_df$min)
@@ -1132,500 +775,3 @@ createFuzzyModel <-
     list(Cn=Cn, Group=Group.Cn, Relates=Relates.CnCn, Labels=Labels.CnCn, ValueRange=ValRng_df)
   }
 
-#--------------------------------------
-#Create a Scenario Object to be Modeled
-#--------------------------------------
-#' Create a scenario object to be modeled
-#'
-#' \code{createFuzzyScenario} loads a scenario file into object used in model
-#' application
-#'
-#' This function reads a JSON formatted text file which describes a scenario. A
-#' scenario is defined by the starting values of all concepts and starting
-#' changes in one or more concepts.
-#'
-#' @param Dir the a string identifying the path to the scenario directory.
-#' @param M the FSDM model object that is created by the 'createFuzzyModel'
-#' function.
-#' @param OpRange a 2-element vector identifying the operating range of the
-#' model. The default values are c(0.01, 99.99), just short of 0 and 100 to
-#' avoid values that either result in no change or infinite change.
-#' @return a list containing the following components:
-#' Cn a vector of concept variable names in the same order as the list in the
-#' fuzzy model. 
-#' StartValues a numeric vector of concept starting values scaled 
-#' to the range of 0 to 100 and in the order of Cn. 
-#' ChangeTo a numeric vector of concept starting changes scaled to the operating
-#' range and in the order of Cn.
-#' @export
-createFuzzyScenario <- function(Dir, M, OpRange = c(0.01, 99.99)) {
-  #Load table of starting concept values, check values, and create vectors for each
-  Values_df <- fromJSON(file.path(Dir, "scenario.json"))
-  rownames(Values_df) <- Values_df$name
-  Values_df$startvalue <- as.numeric(Values_df$startvalue)
-  Values_df$startchange[Values_df$startchange == "NA"] <- NA
-  Values_df$startchange <- as.numeric(Values_df$startchange)
-  #Convert input starting values to operating range
-  StartValues_Cn <- numeric(length(M$Cn))
-  names(StartValues_Cn) <- M$Cn
-  #Extract model value range
-  ValRng_df <- M$ValueRange
-  #Scale start values
-  for(cn in M$Cn) {
-    StartVal <- Values_df[cn, "startvalue"]
-    MinVal <- as.numeric(ValRng_df[cn,"min"])
-    MaxVal <- as.numeric(ValRng_df[cn,"max"])
-    StartValues_Cn[cn] <- rescale(StartVal, c(MinVal, MaxVal), OpRange )
-  }
-  #Record the change to targets
-  ChangeTo_Cn <- numeric(length(M$Cn))
-  names(ChangeTo_Cn) <- M$Cn
-  for(cn in M$Cn) {
-    if (!is.na(Values_df[cn, "startchange"])) {
-      ChangeVal <- Values_df[cn, "startchange"]
-      MinVal <- as.numeric(ValRng_df[cn,"min"])
-      MaxVal <- as.numeric(ValRng_df[cn,"max"])
-      ChangeTo_Cn[cn] <- rescale(ChangeVal, c(MinVal, MaxVal), OpRange )
-    } else {
-      ChangeTo_Cn[cn] <- NA
-    }
-  }
-  #Return all the model components in a list
-  list(
-    Cn=M$Cn, 
-    StartValues=StartValues_Cn, 
-    ChangeTo=ChangeTo_Cn
-  )
-}
-
-#-------------------------------------
-#Function to calculate initial changes
-#-------------------------------------
-#' Calculate changes to concepts being varied in scenario
-#' 
-#' \code{calcInitChange} calculates changes to concepts being varied in a
-#' scenario
-#' 
-#' In a scenario, the values of one or a few concepts are changed and then the
-#' model is run to calculate a new equilibrium state of concept values. The
-#' changes to these 'independent' concepts are made in small increments to model
-#' assumptions about how the values will change over time. In each increment, 
-#' the change for the increment is calculated from the concept values of the
-#' previous increment, the scenario target concept values, and the number of
-#' remaining increments. Calculation of the increments assumes that change will
-#' occur at a constant exponential rate over the course of the remaining
-#' increments.
-#' 
-#' @param V_Cn a numeric vector identifying the values of concepts
-#' @param TargetV_Cn a numeric vector identifying the target values of concepts
-#' for the scenario.
-#' @param RemIncr a number identifying the remaining number of increments to 
-#' complete the scenario.
-#' @param Type a string identifying the growth function. May be either
-#' 'Exponential' or 'Linear'.
-#' @return a list having 2 named components. Ratio is the ratio of change of the
-#' 'independent' concepts. Values is a numeric vector of the value of concepts 
-#' after 'independent' concepts have been incremented.
-#' @export
-calcInitChange <- function(V_Cn, TargetV_Cn, RemIncr, Type = "Exponential") {
-  if (Type == "Exponential") {
-    TotChangeRatio_Cn <- TargetV_Cn / V_Cn
-    IncChangeRatio_Cn <- TotChangeRatio_Cn ^ (1 / RemIncr)
-  } else {
-    if (Type == "Linear") {
-      IncChangeAmt_Cn <- (TargetV_Cn - V_Cn) / RemIncr
-      IncChangeRatio_Cn <- (V_Cn + IncChangeAmt_Cn) / V_Cn
-    } else {
-      stop("Value of 'Type' argument must be either 'Exponential' or 'Linear'")
-    }
-  }
-  IncChangeRatio_Cn[is.na(IncChangeRatio_Cn)] <- 1
-  list(
-    Ratio = IncChangeRatio_Cn,
-    Values = V_Cn * IncChangeRatio_Cn
-  )
-}
-# Example
-# calcInitChange(1, 100, 100, Type = "Exponential")
-# calcInitChange(1, 100, 100, Type = "Linear")
-
-#-----------------------------------------------------------------
-#Function to calculate the change ratio of posterior concept value
-#-----------------------------------------------------------------
-#' Calculate change ratio of posterior concept value
-#' 
-#' \code{calcPosteriorRatio} calculates the ratio of the new posterior concept
-#' value to the previous value due to a change in an anterior concept value
-#' 
-#' This function calculates the ratio of change in the posterior concept value
-#' in a relationship due to the proportional change the anterior concept value
-#' in the relationship where proportional change is defined as (V' / V ) - 1.
-#' The algorithm assumes that the change to the remainder for the posterior
-#' concept is proportional to the change to the remainder for the anterior
-#' concept where the remainder is the difference between the value and the value
-#' limit in the direction of the change. Since the FSDM operates in the range of
-#' 0 to 100, the lower limit is 0 and the upper limit is 100. For example if the
-#' anterior concept changes from 20 to 40, the value limit is 100 and the
-#' remainder is 80. The change to the remainder is 20 divided by 80. The change
-#' to the remainder of the posterior concept is equal to the change to the
-#' remainder of the anterior concept multiplied by the relationship weight. For
-#' example if the weight is 0.5, then the change to the remainder of the
-#' posterior concept would be half of the change to the remainder of the
-#' anterior concept. Given this assumption, the proportional change to the
-#' posterior concept due to a change in an anterior concept can be calculated as
-#' a function of the anterior concept value prior to change, the posterior
-#' concept value, the proportional change in the anterior concept value, and the
-#' weight. The calculation of the change to the posterior concept differs
-#' depending on whether the proportional change to the anterior concept is
-#' positive or negative and whether the relationship weight is positive or
-#' negative. If either are 0, the result is 0.
-#' 
-#' @param Va a numeric value in the interval (0, 100] identifying the
-#' value of the anterior concept.
-#' @param Ra a numeric value identifying the ratio of the anterior
-#' concept value and its previous value.
-#' @param Vp a numeric value in the interval (0, 100] identifying the
-#' value of the posterior concept.
-#' @param W a numeric value in the interval [-1, 1] identify the strength
-#' of the relationship between the anterior and posterior concepts in the
-#' relationship. Negative values denote inverse relationship.
-#' @return A numeric value identifying the ratio of the updated posterior
-#' concept value to the starting posterior concept value due to the change in
-#' the anterior concept value.
-#' @export
-calcPosteriorRatio <- function(Va, Ra, Vp, W) {
-  Rp <- 0
-  VaIncTerm <- Va * (1 - (1 / Ra)) / (100 - (Va / Ra))
-  if (W > 0) {
-    if (Ra >= 1) {
-      Rp <- W * VaIncTerm * ((100 - Vp) / Vp) + 1
-    } else {
-      Rp <- W * (Ra - 1) + 1
-    }
-  } else {
-    if (Ra >= 1) {
-      Rp <- W * VaIncTerm + 1
-    } else {
-      Rp <- W * (Ra - 1) * ((100 - Vp) / Vp) + 1
-    }
-  }
-  Rp
-}
-# Examples test
-# calcPosteriorRatio(20, 2, 20, 1)
-# calcPosteriorRatio(20, 2, 20, 0.5)
-# calcPosteriorRatio(20, 0.5, 80, 1)
-# calcPosteriorRatio(20, 0.5, 80, 0.5)
-# calcPosteriorRatio(50, 2, 50, -1)
-# calcPosteriorRatio(50, 2, 50, -0.5)
-# calcPosteriorRatio(25, 0.5, 50, -1)
-# calcPosteriorRatio(25, 0.5, 50, -0.5)
-
-#----------------------------------------------------------------
-#Function to calculate concept values by applying model relations
-#----------------------------------------------------------------
-#' Calculate updated concept values by applying model relations to a set of
-#' concept values and changes to those values.
-#' 
-#' \code{calcRelationEffects} updates concept values by applying
-#' relations to a set of concept values and changes to those concept values.
-#' 
-#' Since most models include cycles, the model calculations must be iterated
-#' until the concept values change very little between iterations or until a
-#' maximum number of iterations has been completed. In each iteration, the
-#' proportional changes to concept values from their starting values are
-#' updated by applying the calcPropChange function to each of ...
-#' 
-#' @param Values_Cn a numeric vector of values in the interval (0, 100]
-#' identifying the relative value of each concept.
-#' @param ValueChg_Cn a numeric vector of values identifying the proportional
-#' change in each value.
-#' @param M a list containing the FSDM model components 
-#' @return a list having 3 named components. Ratio is the ratio of change of the
-#' 'independent' concepts. Values is a numeric vector of the value of concepts 
-#' after 'independent' concepts have been incremented. MaxValueChg is a number
-#' identifying the maximum percentage change in the values of concepts between
-#' starting and ending values.
-#' @export
-calcEffects <- function(V_Cn, R_Cn, M) {
-  W_CnCn <- M$Relates
-  W_CnCn[is.na(W_CnCn)] <- 0
-  Cn <- colnames(W_CnCn)
-  V_Cn <- V_Cn[Cn]
-  R_Cn <- R_Cn[Cn]
-  NewRatio_Cn <- sapply(Cn, function(x) {
-    Effects_ <- 
-      mapply(calcPosteriorRatio, V_Cn, R_Cn, V_Cn[x], W_CnCn[,x])
-    sum(Effects_ - 1) + 1
-  })
-  NewValues_Cn <- NewRatio_Cn * V_Cn
-  MaxValueChg <- max(abs(NewValues_Cn / V_Cn - 1)) * 100
-  list(
-    Ratio = NewRatio_Cn,
-    Values = NewValues_Cn,
-    MaxValueChg = MaxValueChg
-  )
-}
-# Example
-# M <- createFuzzyModel("models/ThisThat")
-# S <- createFuzzyScenario("models/ThisThat/scenarios/Test1", M)
-# Effects1_ls <- calcInitChange(S$StartValues, S$ChangeTo, 100, Type = "Linear")
-# Effects2_ls <- calcEffects(Effects1_ls$Values, Effects1_ls$Ratio, M)
-# Effects3_ls <- calcEffects(Effects2_ls$Values, Effects2_ls$Ratio, M)
-# rm(M, S, Effects1_ls, Effects2_ls, Effects3_ls)
-
-#---------------
-#Solve the Model
-#---------------
-#' Solve the model in response to initial concept changes
-#' 
-#' \code{solveModel} iterates model to either find an equilibrium solution or
-#' identify if there is no equilibrium
-#' 
-#' This function solves a model for a given set of initial changes to concept.
-#' It iteratively runs the calcEffects function and with each iteration checks
-#' whether the resulting values are very nearly equal to the concept values in
-#' the previous iteration. If so, iteration is stopped. If the maximum number of
-#' iterations occurs without finding an equilibrium the iteration is also
-#' stopped. The function returns the result of the iteration and an indicator of
-#' whether an equilibrium value has been found.
-#' 
-#' @param V_Cn a numeric vector identifying the values of concepts
-#' @param TargetV_Cn a numeric vector identifying the target values of concepts
-#' for the scenario
-#' @param RemIncr the remaining number of increments to complete the scenario
-#' @param M a list containing the FSDM model components 
-#' @param Type a string identifying the growth function. May be either
-#' 'Exponential' or 'Linear'.
-#' @param MaxIter a number identifying the maximum number of iterations
-#' @param ThresholdChg a number identifying the threshold for identifying whether
-#' equilibrium has been found
-#' @return a list having 3 named components. Success is a logical identifying
-#' whether an equilibrium solution has been found. Values is a numeric vector
-#' identifying the values of concepts at the end. AllValues is a matrix
-#' identifying the values of concepts at each iteration where columns are the
-#' concepts and rows are the iterations.
-#' @export
-solveModel <- 
-  function(V_Cn, TargetV_Cn, RemIncr, M, Type, MaxIter = 100, ThresholdChg = 0.01) {
-    Change_ls <- calcInitChange(V_Cn, TargetV_Cn, RemIncr, Type)
-    AllValues_ls <- list()
-    AllValues_ls[[1]] <- Change_ls$Values
-    for (i in 1:MaxIter) {
-      Change_ls <- calcEffects(Change_ls$Values, Change_ls$Ratio, M)
-      AllValues_ls[[i + 1]] <- Change_ls$Values
-      if (Change_ls$MaxValueChg < ThresholdChg) {
-        Success = TRUE
-        break()
-      }
-      Success = FALSE
-    }
-    list(
-      Values = AllValues_ls[[length(AllValues_ls)]],
-      AllValues = do.call(rbind, AllValues_ls),
-      Success = Success,
-      NumIter = i
-    )
-  }
-# Example
-# M <- createFuzzyModel("models/Ozesmi")
-# S <- createFuzzyScenario("models/Ozesmi/scenarios/Enforce1", M)
-# Test_ls <- solveModel(S$StartValues, S$ChangeTo, 100, M, "Linear")
-
-#---------------------------------------------------------
-#Define a function that runs the fuzzy cognitive map model
-#---------------------------------------------------------
-#' Run the fuzzy model
-#'
-#' \code{runFuzzyModel} runs a fuzzy model given scenario inputs for starting
-#' values and starting changes.
-#'
-#' This function runs a FCM model that was created using the createFuzzyModel
-#' function with a scenarios that was created using the createFuzzyScenario
-#' function. The function uses a nested loop to calculate final values. The
-#' outer loop applies the starting changes in small increments so that the
-#' changes appropriate for applying 'point elasticities'. The inner loop
-#' iterates the model until a stable equilibrium result is achieved for each
-#' increment.
-#'
-#' @param M a fuzzy model created using the create FuzzyModel function.
-#' @param S a scenario created using the loadScenario function.
-#' @param NumIncr a numeric value identifying the number of increments to use
-#' for building up the starting changes.
-#' @param MaxIter a numeric value identifying the maximum number of iterations
-#' for the inner loop.
-#' @param OpRange a 2-element vector identifying the operating range of the
-#' model. The default values are c(0.01, 99.99), just short of 0 and 100 to
-#' avoid values that either result in no change or infinite change.
-#' @return A list containing 3 components:
-#' Summary - the final relative concept values (e.g. 0 - 100) for each concept
-#' and increment;
-#' ScaleSummary - the final concept values in the nominal measurement units for
-#' each concept and increment;
-#' Full - the relative concept values (e.g. 0 - 100) for each increment and
-#' each iteration.
-#' @export
-runFuzzyModel <- function(M, S, Type, NumIncr = 100){
-  Final_ls <- list()
-  ScaledSummary_ItCn <- array(NA, dim = c(NumIncr + 1, length(M$Cn)))
-  colnames(ScaledSummary_ItCn) <- M$Cn
-  Values_Cn <- S$StartValues
-  Targets_Cn <- S$ChangeTo
-  RemIncr <- NumIncr
-  ScaledSummary_ItCn[1,] <- Values_Cn
-  Success_ <- logical(NumIncr)
-  NumIter_ <- numeric(NumIncr)
-  for (n in 1:NumIncr) {
-    IncrValues_ls <- solveModel(Values_Cn, Targets_Cn, RemIncr, M, Type)
-    Values_Cn <- IncrValues_ls$Values
-    Final_ls[[n]] <- IncrValues_ls$AllValues
-    Success_[n] <- IncrValues_ls$Success
-    NumIter_[n] <- IncrValues_ls$NumIter
-    ScaledSummary_ItCn[n+1,] <- Values_Cn
-    RemIncr <- RemIncr - 1
-  }
-  RescaledSummary_ItCn <- sapply(colnames(ScaledSummary_ItCn), function(x) {
-    rescale(ScaledSummary_ItCn[,x], c(0.01, 99.99), unlist(M$ValueRange[x,]))
-  })
-  Message <- local({
-    NumFail <- sum(!Success_)
-    AveIter <- mean(NumIter_)
-    if (NumFail == 0) {
-      paste0("Run Complete. ",
-             "Solution converged for all increments. ",
-             "Average number of iterations per increment = ", AveIter)
-    } else {
-      paste0("Run Complete with Problems. ",
-             "Solution didn't converge for ", NumFail, " increments. ",
-             "Average number of iterations per increment = ", AveIter)
-    }
-  })
-  list(
-    ScaledSummary = ScaledSummary_ItCn,
-    RescaledSummary = RescaledSummary_ItCn,
-    ScaledFull = Final_ls,
-    Message = Message, 
-    Success = Success_,
-    NumIter = NumIter_
-  )
-}
-# Example
-# M <- createFuzzyModel("models/Ozesmi")
-# S <- createFuzzyScenario("models/Ozesmi/scenarios/Enforce1", M)
-# Outputs_ls <- runFuzzyModel(M, S, "Linear", 10)
-# save(Outputs_ls, file = file.path("models/Ozesmi/scenarios/Enforce1", "Outputs_ls.RData"))
-# S <- createFuzzyScenario("models/Ozesmi/scenarios/Enforce2", M)
-# Outputs_ls <- runFuzzyModel(M, S, "Linear", 10)
-# save(Outputs_ls, file = file.path("models/Ozesmi/scenarios/Enforce2", "Outputs_ls.RData"))
-# S <- createFuzzyScenario("models/Ozesmi/scenarios/Enforce3", M)
-# Outputs_ls <- runFuzzyModel(M, S, "Linear", 10)
-# save(Outputs_ls, file = file.path("models/Ozesmi/scenarios/Enforce3", "Outputs_ls.RData"))
-# S <- createFuzzyScenario("models/Ozesmi/scenarios/Wetlands1", M)
-# Outputs_ls <- runFuzzyModel(M, S, "Linear", 10)
-# save(Outputs_ls, file = file.path("models/Ozesmi/scenarios/Wetlands1", "Outputs_ls.RData"))
-# matplot(Outputs_ls$ScaledSummary, type = "l")
-# 
-# M <- createFuzzyModel("models/ThisThat")
-# S <- createFuzzyScenario("models/ThisThat/scenarios/Test1", M)
-# Test_ls <- runFuzzyModel(M, S, "Linear", 100)
-# matplot(Test_ls$ScaledSummary[,c("This", "That")], type = "l")
-# matplot(Test_ls$ScaledSummary[,c("This2", "That2")], type = "l")
-# matplot(Test_ls$ScaledSummary[,c("This2", "That4")], type = "l")
-# matplot(Test_ls$ScaledSummary[,c("This3", "That5")], type = "l")
-# matplot(Test_ls$ScaledSummary[,c("This", "This4", "That5")], type = "l")
-# matplot(Test_ls$ScaledSummary[,c("This", "This2", "That3")], type = "l")
-# 
-# M <- createFuzzyModel("models/Futures2")
-# S <- createFuzzyScenario("models/Futures2/scenarios/IncreaseCapacity50", M)
-# Test_ls <- runFuzzyModel(M, S, "Linear", 100)
-# matplot(Test_ls$ScaledSummary[,c("RelAutoCap", "Congestn", "AutoSpd", "Proximity", "Density")], type = "l")
-# 
-# M <- createFuzzyModel("models/Futures2")
-# S <- createFuzzyScenario("models/Futures2/scenarios/ReduceAutonomousCost100", M)
-# Test_ls <- runFuzzyModel(M, S, "Exponential", 100)
-# matplot(Test_ls$ScaledSummary[,c("AutonCost", "Congestn", "AutoSpd", "VMT", "Density")], type = "l")
-
-
-###############################################
-#---------------------------------------------#
-#           ANALYZE MODEL RESULTS             #
-#---------------------------------------------#
-###############################################
-
-#---------------------------------------------------------------
-#Define a function to identify model scenarios that have outputs
-#---------------------------------------------------------------
-#' Identify scenarios that have model outputs
-#' 
-#' \code{idScenWithOutputs} returns the names of scenarios that have model run
-#' outputs.
-#' 
-#' This function takes the name of a model and returns a vector of the names
-#' of all the model scenarios that have model outputs.
-#' 
-#' @param Model a string representation of the model name.
-#' @return a string vector of the names of scenarios having model outputs.
-#' @export
-idScenWithOutputs <- function(ModelName) {
-  ScenPath <- file.path("../models", ModelName, "scenarios")
-  Sc <- dir(ScenPath)
-  HasOutputs_ <- sapply(Sc, function(x) {
-    file.exists(file.path(ScenPath, x, "Outputs_ls.RData"))
-  })
-  Sc[HasOutputs_]
-}
-
-#------------------------------------------------------
-#Define function to format output data to plot and save
-#------------------------------------------------------
-#' Create data frame of selected scenarios and concepts to plot and save
-#'
-#' \code{formatOutputData} makes a data frame of the summary results for selected
-#' scenarios and selected concepts.
-#'
-#' This function creates a data frame of model results for selected scenarios
-#' and selected concepts. The data frame is in 'flat' format where values are
-#' in one column and the corresponding concept names, scenario names, and 
-#' iterations are in separate columns.
-#'
-#' @param Model a string representation of the model name.
-#' @param Sc a vector of the names of scenarios to include.
-#' @param Vn the variable names for the concepts to include.
-#' @return A data frame having columns identifying the scenario, concept,
-#' iteration, scaled values, and rescaled values.
-#' @export
-formatOutputData <- function(ModelDir="../models", ModelName, Sc, Vn) {
-  ScenPath <- file.path(ModelDir, ModelName, "scenarios")
-  ModelOut_ls <- list()
-  for (sc in Sc) {
-    DataPath <- file.path(ScenPath, sc, "Outputs_ls.RData")
-    if (file.exists(DataPath)) {
-      load(DataPath)
-      ModelOut_ls[[sc]]$Scaled <- Outputs_ls$ScaledSummary
-      ModelOut_ls[[sc]]$Rescaled <- Outputs_ls$RescaledSummary
-    }
-  }
-  Results_ls <- 
-    lapply(ModelOut_ls, function(x) {
-      NumIter <- nrow(x$Scaled)
-      Scaled_mx <- x$Scaled[, Vn]
-      Rescaled_mx <- x$Rescaled[, Vn]
-      data.frame(
-        Concept = rep(Vn, each = NumIter),
-        Iteration = rep(1:NumIter, length(Vn)),
-        Scaled = as.vector(Scaled_mx),
-        Rescaled = as.vector(Rescaled_mx)
-      )
-    })
-  for (i in 1:length(Results_ls)) {
-    Results_ls[[i]]$Scenario <- names(Results_ls)[i]
-  }
-  Results_df <- do.call(rbind, Results_ls)
-  rownames(Results_df) <- NULL
-  Results_df
-}
-# Example
-# Results_df <- 
-#   formatOutputData("models", "Ozesmi",
-#                    c("Enforce1", "Enforce2", "Enforce3", "Wetlands1"),
-#                    c("Fish", "Wetlands", "Enforcement", "Income", "Pollution"))
