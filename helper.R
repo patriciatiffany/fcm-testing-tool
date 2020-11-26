@@ -360,7 +360,7 @@ makeAdjacencyMatrix <- function(Relations_ls, Var_, Type = "Logical") {
     
     # Get all the variables associated with the edges 
     # (names of columns in any links data frame except "concept_id")
-    edge_vars <- names(rs[1, "affected_by"][[1]]$links[[1]])
+    edge_vars <- names(rs[[1]][["affected_by"]][[1]]$links[[1]]) #edge_vars <- names(rs[1, "affected_by"][[1]]$links[[1]])
     edge_vars <- edge_vars[edge_vars != "concept_id"]
     
     # Make a list of empty matrices, one for each of the edge variables in the data, plus the type of relationship (saved in "type" for each set of links)
@@ -371,13 +371,13 @@ makeAdjacencyMatrix <- function(Relations_ls, Var_, Type = "Logical") {
     
     # For number of relations present, find what is affecting it and for each edge variable
     # enter its value in the corresponding adjacency matrices
-    for (i in 1:dim(rs)[1]){ 
-      id <- rs$concept_id[i]
-      infl_list <- rs[rs["concept_id"] == id,"affected_by"]
+    for (i in length(rs)){#1:dim(rs)[1]){ 
+      id <- rs[[i]]$concept_id #rs$concept_id[i]
+      infl_list <- rs[[i]]$affected_by #rs[rs["concept_id"] == id,"affected_by"]
       # Loop over all sets of links (Note: tfn data considers only 1 set)
       for (j in 1:length(infl_list)){ 
-        links <- infl_list[[j]]$links[[1]] # a data frame of links in that set of influences
-        infls <- sapply(links$concept_id, function(x) which(c_ids == x))
+        links <- infl_list[[j]]$links # list of links in that set of influences ##infl_list[[j]]$links[[1]] # a data frame
+        infls <- sapply(links, function(x) x$concept_id) #sapply(links$concept_id, function(x) which(c_ids == x))
         for (e in edge_vars){
           mx_list[[e]][infls, id] <- links[[e]]
           mx_list[["type"]][infls, id] <- infl_list[[j]]$type # Corresponding type for that set of links (and/or etc.)
