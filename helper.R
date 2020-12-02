@@ -275,16 +275,16 @@ formatConceptTable <- function(Concepts_df,export=FALSE) {
 # Extract vector of variables from relations list
 #-----------------------------------
 #' Extracts a vector of variables from the relations list
-#' @param Relations_list a list containing the relations data.
+#' @param Relations_ls a list containing the relations data.
 #' @param var a list containing the relations data.
 #' @param level where in the nested list is this variable located? Is it a property of a causal variable, a group of causal vars, or an affected variable?
 #' @return a vector containing the data of interest 
 #' @export
-extract_rel <- function(Relations_list, var, level = "causal_link"){
+extract_rel <- function(Relations_ls, var, level = "causal_link"){
   switch(level, 
-         "causal_link" = unlist(lapply(Relations_list, function(a){lapply(a$affected_by, function(x){sapply(x$links, "[[", var)})})),
-         "causal_group" = unlist(lapply(Relations_list, function(a){lapply(a$affected_by, function(x){rep(x[[var]], length(x$links))})})),
-         "affected" = unlist(lapply(Relations_list, function(a){rep(a[[var]], sum(sapply(a$affected_by, function(x){length(x$links)})))}))
+         "causal_link" = unlist(lapply(Relations_ls, function(a){lapply(a$affected_by, function(x){sapply(x$links, "[[", var)})})),
+         "causal_group" = unlist(lapply(Relations_ls, function(a){lapply(a$affected_by, function(x){rep(x[[var]], length(x$links))})})),
+         "affected" = unlist(lapply(Relations_ls, function(a){rep(a[[var]], sum(sapply(a$affected_by, function(x){length(x$links)})))}))
   )
 }
 
@@ -302,32 +302,32 @@ extract_rel <- function(Relations_list, var, level = "causal_link"){
 #' show in table form. This function extracts and formats the concept data that
 #' is to be displayed in a table. 
 #'
-#' @param Relations_list a list containing the relations data.
+#' @param Relations_ls a list containing the relations data.
 #' @return a data frame containing the relations data to be shown in a table.or exported
 #' @export
-formatRelationTable <- function(Relations_list,Concepts_df,export=FALSE,use.full.names=TRUE) {
+formatRelationTable <- function(Relations_ls,Concepts_df,export=FALSE,use.full.names=TRUE) {
   name_key <- Concepts_df$name
   names(name_key) <- Concepts_df$concept_id
   
-  causal_vars <- extract_rel(Relations_list, "concept_id")
-  affects_vars <- extract_rel(Relations_list, "concept_id", level="affected")
-  rel_ks <- extract_rel(Relations_list, "k", level="affected_var")
-  rel_types <- extract_rel(Relations_list, "type", level="causal_group")
+  causal_vars <- extract_rel(Relations_ls, "concept_id")
+  affects_vars <- extract_rel(Relations_ls, "concept_id", level="affected")
+  rel_ks <- extract_rel(Relations_ls, "k", level="affected_var")
+  rel_types <- extract_rel(Relations_ls, "type", level="causal_group")
   if (use.full.names){
     df <- data.frame(From = name_key[causal_vars],
                      To = name_key[affects_vars],
-                     Direction = extract_rel(Relations_list, "direction"),
-                     Weight = extract_rel(Relations_list, "weight"),
+                     Direction = extract_rel(Relations_ls, "direction"),
+                     Weight = extract_rel(Relations_ls, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
   } else {
     df <- data.frame(From = causal_vars,
                      To = affects_vars,
-                     Direction = extract_rel(Relations_list, "direction"),
-                     Weight = extract_rel(Relations_list, "weight"),
+                     Direction = extract_rel(Relations_ls, "direction"),
+                     Weight = extract_rel(Relations_ls, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
   }
   if (export){ # untested; written 2019/05/21
-    df$Description <- extract_rel(Relations_list, "description", level="causal_group")
+    df$Description <- extract_rel(Relations_ls, "description", level="causal_group")
   }
   return(df)
 }
@@ -347,7 +347,7 @@ formatRelationTable <- function(Relations_list,Concepts_df,export=FALSE,use.full
 #' matrix are logicals with TRUE meaning that a relationship exists and FALSE
 #' meaning that it does not.
 #' 
-#' @param Relations_ls a list of reslations
+#' @param Relations_ls a list of relations
 #' @param Var_ a vector of concepts in the system (usually model$concepts$ID)
 #' @export
 makeAdjacencyMatrix <- function(Relations_ls, Var_, Type = "Logical") {
@@ -379,10 +379,10 @@ makeAdjacencyMatrix <- function(Relations_ls, Var_, Type = "Logical") {
         links <- infl_list[[j]]$links # list of links in that set of influences ##infl_list[[j]]$links[[1]] # a data frame
         infls <- sapply(links, function(x) x$concept_id) #sapply(links$concept_id, function(x) which(c_ids == x))
         for (e in edge_vars){
-          mx_list[[e]][infls, id] <- links[[e]]
-          mx_list[["type"]][infls, id] <- infl_list[[j]]$type # Corresponding type for that set of links (and/or etc.)
-          mx_list[["rel_group"]][infls, id] <- j
+          mx_list[[e]][infls, id] <- sapply(links, '[[', e)
         }
+        mx_list[["type"]][infls, id] <- infl_list[[j]]$type # Corresponding type for that set of links (and/or etc.)
+        mx_list[["rel_group"]][infls, id] <- j
       }
     }
     return(mx_list)
@@ -448,8 +448,8 @@ initRelationsEntry <- function(VarName){
 mapRelations <- 
   function(Model_ls, FromConcept = NULL, FromGroup = "All", ToGroup = "All") {
     #Extract all the concept names, variable names, and group names
-    Nn <- Model_ls$concepts$concept
-    Nv <- Model_ls$concepts$ID
+    Nn <- Model_ls$concepts$name
+    Nv <- Model_ls$concepts$concept_id
     Ng <- Model_ls$concepts$group
     #Functions to translate from name to variable name and vice versa
     nameToVar <- 
@@ -465,7 +465,7 @@ mapRelations <-
     #   FromConcept <- nameToVar(FromConcept)
     # }
     #Make a matrix of relations
-    Relations_mx <- makeAdjacencyMatrix(Model_ls$relations, Model_ls$concepts$ID, Type = "Values")$direction[Nv,Nv]
+    Relations_mx <- makeAdjacencyMatrix(Model_ls$relations, Model_ls$concepts$concept_id, Type = "Values")$direction[Nv,Nv]
     #Function to select portion of matrix and return a matrix regardless of how
     #many rows and columns are selected
     selectMatrix <- function(Matrix, RowSelect, ColSelect) {
@@ -605,10 +605,10 @@ makeDot <-
   {
     # Name to variable key to use for labels
     name_key <- Concepts_df$concept
-    names(name_key) <- Concepts_df$id
+    names(name_key) <- Concepts_df$concept_id
     
     #Make matrices of relations and labels
-    Cn <- Concepts_df$id
+    Cn <- Concepts_df$concept_id
     Relates_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
     Vals <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675,
               H = 0.75, VH = 0.95)
@@ -686,6 +686,19 @@ makeDot <-
 #             RUNNING THE MODEL               #
 #---------------------------------------------#
 ###############################################
+
+#---------------
+# Run simulation
+#---------------
+run_model <- function(Relations_ls, Concepts_df){
+  Cn <- Concepts_df$concept_id
+  adj_mx_list <- makeAdjacencyMatrix(Relations_ls, Cn)
+  
+  
+}
+
+
+
 
 #--------------------------------------------------------
 #Rescaling a Value from an Input Range to an Output Range

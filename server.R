@@ -130,10 +130,10 @@ shinyServer(function(input, output, session) {
     causal_vars <- extract_rel(model$relations, "concept_id")
     affects_vars <- extract_rel(model$relations, "concept_id", level="affected")
     updateSelectInput(session, inputId = "causalConcept",
-                      selected = causal_var[RowNum]
+                      selected = causal_vars[RowNum]
     )
     updateSelectInput(session, inputId = "affectedConcept",
-                      selected = affects_var[RowNum]
+                      selected = affects_vars[RowNum]
     )
   }
   
