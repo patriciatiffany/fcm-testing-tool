@@ -311,22 +311,22 @@ formatRelationTable <- function(Relations_ls,Concepts_df,export=FALSE,use.full.n
   rel_types <- extract_rel(Relations_ls, "type", level="causal_group")
   rel_group <- unlist(lapply(Relations_ls, function(a){mapply(function(x, y){rep(y, length(x$links))}, a$affected_by, seq_along(a$affected_by))}))
   if (use.full.names){
-    df <- data.frame(From = name_key[causal_vars],
-                     To = name_key[affects_vars],
-                     Direction = extract_rel(Relations_ls, "direction"),
-                     Weight = extract_rel(Relations_ls, "weight"),
+    df <- data.frame(To = name_key[affects_vars],
+                     k = rel_ks,
                      Grouping = rel_group,
                      Type = rel_types,
-                     k = rel_ks,
+                     From = name_key[causal_vars],
+                     Direction = extract_rel(Relations_ls, "direction"),
+                     Weight = extract_rel(Relations_ls, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
   } else {
-    df <- data.frame(From = causal_vars,
-                     To = affects_vars,
-                     Direction = extract_rel(Relations_ls, "direction"),
-                     Weight = extract_rel(Relations_ls, "weight"),
+    df <- data.frame(To = affects_vars,
+                     k = rel_ks,
                      Grouping = rel_group,
                      Type = rel_types,
-                     k = rel_ks,
+                     From = causal_vars,
+                     Direction = extract_rel(Relations_ls, "direction"),
+                     Weight = extract_rel(Relations_ls, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
   }
   if (export){ # untested; written 2019/05/21

@@ -160,11 +160,12 @@ shinyUI(
                                       selectInput(inputId = "causalStrength", 
                                                   label = "Causal Strength", 
                                                   choices = c("", "VL", "L", "ML", "M", "MH", "H", "VH")),
-                                      hr(),
-                                      numericInput(inputId = "relGrouping", label = "Relation group number", value = 1),
-                                      numericInput(inputId = "relK", label = "Inertia of affected concept (k)", value = 0),
+                                      hr(), 
+                                      sliderInput(inputId = "relK", label = "Inertia of affected concept (k)",
+                                                  min=0, max=1, step = 0.1, value = 1),
                                       selectInput(inputId = "relType", label = "Logical conjunction (Type)",
                                                   choices = c("ADD"="add","REQ"="req")),
+                                      numericInput(inputId = "relGrouping", label = "Relation group number", value = 1),
                                       textareaInput("causalDesc", "Causal Description"),
                                       conditionalPanel(
                                         condition = "input.modelAction != 'runModel'",
@@ -199,7 +200,12 @@ shinyUI(
                mainPanel(
                  h4("FCM Run results"),
                  hr(),
-                 #p("Results are run..."),
+                 # p("The logistic sigmoid inference squashing function takes the form of 
+                 #   $f(x;\lambda,h) = \frac{1}{1+e^{-\lambda(x-h)}}$. This means that h controls the location 
+                 #   of the threshold, and lambda is an indication of the steepness of the sigmoid.The 'req' inference takes the minimum of all influences to feed in the 
+                 # squashing function ($x$ above), while the 'add' inference takes in the mean of the influences."),
+                 p("Note: In the current implementation of the model, k's are automatically set to 1 for all concepts
+                   that do not have any incoming influences."),
                  DT::dataTableOutput("resultsTable")
                ) # mainPanel
              ) # sidebarLayout

@@ -707,7 +707,7 @@ shinyServer(function(input, output, session) {
   #-----------------------------------------------
   
   run_params <- reactive({
-    k_df <- merge(model$concepts$concept_id, 
+    k_df <- merge(model$concepts["concept_id"], 
                   data.frame(concept_id=sapply(model$relations, "[[", "concept_id"), 
                              k=sapply(model$relations, "[[", "k")), all.x = TRUE)
     ks <- as.numeric(k_df$k)
