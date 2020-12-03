@@ -1,0 +1,24 @@
+[
+  {
+      "concept_id": "",
+      "k": "",
+      "affected_by": [
+          {
+              "links": [
+                  {
+                      "concept_id": "",
+                      "direction": "",
+                      "weight": ""                    },
+                  {
+                      "concept_id": "",
+                      "direction": "",
+                      "weight": ""
+                  }
+              ],
+              "type": "",
+              "description": ""
+          }
+      ]
+  }
+]         
+
