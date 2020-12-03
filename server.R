@@ -15,9 +15,9 @@
 
 # 2019/07/24 - getting rid of "conceptstable" and "relationslist" reactive values - switch to model$concepts and model$relations
 
-#LOAD RESOURCES
+# LOAD RESOURCES
 #--------------
-#Packages
+# packages
 library(shiny)
 library(shinyBS)
 library(jsonlite)
@@ -25,9 +25,10 @@ library(DT)
 library(ggplot2)
 library(DiagrammeR)
 library(readxl)
-##Helper.R script
-source("helper.R") # <- Still need to check helper.R
-
+## helper.R Script
+source("helper.R") 
+## model algorithm
+source('../../bcfn_seafood_access_modelling/fcm.R')
 
 #SHINY SERVER FUNCTION
 #---------------------
@@ -43,14 +44,16 @@ shinyServer(function(input, output, session) {
   #Global variable that flags whenever a new relationship is defined
   flag_newRelation <- FALSE
   #Create a reactive object to store current selected effects
-  effects <- 
-    reactiveValues(
+  effects <- reactiveValues(
       to = "",
       from = "",
       direction = "",
       strength = "",
       description = "")
-  # #Create a reactive object to store scenario data in
+  
+  run <- reactiveValues(results = NULL, parameters= NULL, set_concepts = NULL, set_values = NULL)
+ 
+   # #Create a reactive object to store scenario data in
   # scenario <- 
   #   reactiveValues(status = NULL, values = NULL, history = NULL)
   # #Create a reactive object to represent scenario table
@@ -388,17 +391,6 @@ shinyServer(function(input, output, session) {
       model$status$lastedit <- as.character(Sys.time())
       #Reset Concept$IsNew
       is$newconcept <- FALSE
-      #Initialize model relations for new concept
-      AnyRelations <- length(model$relations) != 0
-      if (AnyRelations) {
-        ExistingRelations_ <- unlist(lapply(model$relations, function(x) x$concept_id))
-        if (!(input$conceptID %in% ExistingRelations_)) {
-          model$relations[[length(model$relations) + 1]] <- 
-            list(name = input$conceptID, affects = list())
-        }
-      } else {
-        model$relations[[1]] <- list(name = input$conceptID, affects = list())
-      }
       
       showNotification(
         ui = "Concept updated",
@@ -538,7 +530,10 @@ shinyServer(function(input, output, session) {
           effects$direction <- Effects_df$Direction
           effects$strength <- Effects_df$Weight
           effects$description <- Effects_df$Description
-          #in following if, change effects$from to effects$to
+          effects$grouping <- Effects_df$Grouping
+          effects$k <- Effects_df$k
+          effects$type <- Effects_df$Type
+          #in following if, change effects$from to effects$to 
           if (input$affectedConcept %in% effects$to) {
             updateTextInput(session, "causalDirection",
                             value = effects$direction[effects$to == input$affectedConcept])
@@ -546,6 +541,12 @@ shinyServer(function(input, output, session) {
                             value = effects$strength[effects$to == input$affectedConcept])
             updateTextInput(session, "causalDesc",
                             value = effects$description[effects$to == input$affectedConcept])
+            updateTextInput(session, "relGrouping",
+                            value = effects$grouping[effects$to == input$affectedConcept])
+            updateTextInput(session, "relK",
+                            value = effects$k[effects$to == input$affectedConcept])
+            updateTextInput(session, "relType",
+                            value = effects$type[effects$to == input$affectedConcept])
             # and change the selected row in the table to match
             r <- which(relationstable()$From==input$causalConcept & relationstable()$To == input$affectedConcept)
             relationsTableEditing_proxy %>% selectRows(as.numeric(r))
@@ -553,8 +554,9 @@ shinyServer(function(input, output, session) {
             updateTextInput(session, "causalDirection", value = "")
             updateTextInput(session, "causalStrength", value = "")
             updateTextInput(session, "causalDesc", value = "")
+            # note: relations info doesn't reset on purpose
           }
-        } else {
+        } else { # If no pair of concepts are selected in UI
           effects$to <- ""
           effects$concept <- ""
           effects$direction <- ""
@@ -563,9 +565,10 @@ shinyServer(function(input, output, session) {
           updateTextInput(session, "causalDirection", value = "")
           updateTextInput(session, "causalStrength", value = "")
           updateTextInput(session, "causalDesc", value = "")
+          # note: relations info doesn't reset on purpose
         }
       }
-    }
+    } 
   )
   #On change of selected affected concept, update causal info in GUI
   observeEvent(
@@ -580,6 +583,12 @@ shinyServer(function(input, output, session) {
                         value = effects$strength[effects$to == input$affectedConcept])
         updateTextInput(session, "causalDesc",
                         value = effects$description[effects$to == input$affectedConcept])
+        updateTextInput(session, "relGrouping",
+                        value = effects$grouping[effects$to == input$affectedConcept])
+        updateTextInput(session, "relK",
+                        value = effects$k[effects$to == input$affectedConcept])
+        updateTextInput(session, "relType",
+                        value = effects$type[effects$to == input$affectedConcept])
         # and change the selected row in the table to match
         r <- which(relationstable()$From==input$causalConcept & relationstable()$To == input$affectedConcept)
         relationsTableEditing_proxy %>% selectRows(as.numeric(r))
@@ -600,36 +609,47 @@ shinyServer(function(input, output, session) {
       saveLastState()
       
       #Update Relation
-      #change concepts$name to concepts$concept_id
       CausalConcept <- 
         model$concepts$concept_id[model$concepts$concept_id == input$causalConcept]
-      CausalConcepts_ <-
-        unlist(lapply(model$relations, function(x) x$concept_id))
-      CausalIdx <- which(CausalConcepts_ == CausalConcept)
       AffectedConcept <- 
         model$concepts$concept_id[model$concepts$concept_id == input$affectedConcept]
+      
+      ExistingAffected<- unlist(lapply(model$relations, function(x) x$concept_id))
+
       NewEffect_ls <-
-        list(concept_id = AffectedConcept,
+        list(concept_id = CausalConcept,
              direction = input$causalDirection,
              weight = input$causalStrength,
              description = input$causalDesc)
-      Effects_ls <- 
-        model$relations[[CausalIdx]]$affects
-      if (length(Effects_ls) != 0) {
-        AffectedConcepts_ <- unlist(lapply(Effects_ls, function(x) x$concept_id))
-        if (AffectedConcept %in% AffectedConcepts_) {
-          Effects_ls[[which(AffectedConcepts_ == AffectedConcept)]] <-
-            NewEffect_ls
-        } else {
-          Effects_ls[[length(Effects_ls) + 1]] <- NewEffect_ls
-        }
-        flag_newRelation <<- FALSE
-      } else {
-        Effects_ls[[1]] <- NewEffect_ls
+      
+      if (length(ExistingAffected) != 0) {
+          if ((AffectedConcept %in% ExistingAffected)){
+            # Insert new values in existing slot
+            a_idx <- which(ExistingAffected == AffectedConcept)
+            links <- model$relations[[a_idx]]$affected_by[[effects$grouping]]$links
+            ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
+            c_idx <- which(ExistingLinked == CausalConcept)
+            model$relations[[a_idx]]$affected_by[[effects$grouping]]$links[[c_idx]] <- NewEffect_ls
+            model$relations[[a_idx]]$affected_by[[effects$grouping]]$type <- input$relType
+            model$relations[[a_idx]]$k <- input$relK
+          } else {
+            # Create new slot for new affected concept at the end of the list
+            model$relations[[length(model$relations) + 1]] <-
+              list(concept_id = AffectedConcept, 
+                   affected_by = list(list(links = list(NewEffect_ls), type = input$relType)),
+                   k = input$relK)
+          }
+      } else{ # If there are no relations to begin with, just add affected concept to the start of the relations list
+        model$relations[[1]] <-
+          list(concept_id = AffectedConcept, 
+               affected_by = list(list(links = list(NewEffect_ls), type = input$relType)),
+               k = input$relK)
       }
-      model$relations[[CausalIdx]]$affects <- Effects_ls
+      # Reset flag for new relation
+      flag_newRelation <<- FALSE
+      # Show notification
       showNotification(
-        ui = "Relationship updated",
+        ui = "Relationship added/ updated",
         duration = 1, 
         closeButton = TRUE,
         type = "message"
@@ -644,7 +664,6 @@ shinyServer(function(input, output, session) {
       #Save last model state and relations inputs
       saveLastState()
       #Remove relation from model
-      #change concepts$name to concepts$concept_id
       CausalConcept <- 
         model$concepts$concept_id[model$concepts$concept_id == input$causalConcept]
       CausalConcepts_ <-
@@ -682,6 +701,39 @@ shinyServer(function(input, output, session) {
       model$status$lastedit <- as.character(Sys.time())
     }
   )
+  
+  #-----------------------------------------------
+  # IMPLEMENT MODEL RUNS
+  #-----------------------------------------------
+  
+  run_params <- reactive({
+    k_df <- merge(model$concepts$concept_id, 
+                  data.frame(concept_id=sapply(model$relations, "[[", "concept_id"), 
+                             k=sapply(model$relations, "[[", "k")), all.x = TRUE)
+    ks <- as.numeric(k_df$k)
+    names(ks) <- k_df$concept_id
+    
+    list(h = input$sliderFCM_h, lambda = input$sliderFCM_lambda, k= ks, 
+         init = input$sliderFCM_init, infer_type = "sigmoid-exp",
+         iter = 30)
+  })
+  
+  observeEvent(
+    input$runFCMAaction,
+    {
+      if (is.null(model$relations)){
+        showNotification(
+          ui = "No model loaded. Please load a model before proceeding.",
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      } else{
+        run$results <- run_model(model,run_params())
+      }
+    }
+  )
+  
 
   #-----------------------------------------------
   # OUTPUT TABLES FOR UI
@@ -734,5 +786,12 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  
+  # Model output: table
+  output$resultsTable <- DT:: renderDataTable(
+    run$results,
+    server = FALSE,
+    options = list(dom='tp', pageLength = 15)
+  )
   
 }) #end: shinyServer

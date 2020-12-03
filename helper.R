@@ -8,15 +8,12 @@
 # note: the templates folder in the models folder needs to exist
 
 
-############################################
 #------------------------------------------#
 # INITIALIZING, LOADING, AND SAVING MODELS #
 #------------------------------------------#
-############################################
-
-#----------------------
-#Initialize a New Model
-#----------------------
+#--------------------------------#
+# Initialize a New Model
+#--------------------------------#
 #' Initialize a new model.
 #'
 #' \code{initializeNewModel} initializes a new model by creating a directory
@@ -66,9 +63,9 @@ initializeNewModel <- function(ModelName, Author) {
   status_ls
 }
 
-#---------------------------------------------------
-#Initialize a New Model by Copying an Existing Model
-#---------------------------------------------------
+#--------------------------------#
+# Initialize a New Model by Copying an Existing Model
+#--------------------------------#
 #' Initialize a new model by copying an existing model.
 #'
 #' \code{initializeCopyModel} initializes a new model by creating a directory
@@ -135,9 +132,9 @@ initializeCopyModel <- function(ModelName, CopyModelName, Author, CopyScenarios 
   status_ls
 }
 
-#----------------------
-#Load Model Status File
-#----------------------
+#--------------------------------#
+# Load Model Status File
+#--------------------------------#
 #' Load the model status file for a model.
 #'
 #' \code{loadModelStatus} reads a model status file and returns a list
@@ -161,9 +158,9 @@ loadModelStatus <- function(ModelName, Author = NULL){
   status_ls
 }
 
-#------------------------
-#Load Model Concepts File
-#------------------------
+#--------------------------------#
+# Load Model Concepts File
+#--------------------------------#
 #' Load the concept file for a model.
 #'
 #' \code{loadModelConcepts} reads the file that contains model concept information
@@ -180,9 +177,9 @@ loadModelConcepts <- function(ModelName){
   fromJSON(file.path(ModelDir, "concepts.json"))
 }
 
-#-------------------------
-#Load Model Relations File
-#-------------------------
+#--------------------------------#
+# Load Model Relations File
+#--------------------------------#
 #' Load the relations file for a model.
 #'
 #' \code{loadModelRelations} reads the file that contains model relations
@@ -199,9 +196,9 @@ loadModelRelations <- function(ModelName){
   fromJSON(file.path(ModelDir, "relations.json"), simplifyDataFrame = FALSE)
 }
 
-#-------------------------
-#Save All Model Components
-#-------------------------
+#--------------------------------#
+# Save All Model Components
+#--------------------------------#
 #' Saves all the model components as JSON files.
 #'
 #' \code{saveModel} saves the model status, model concepts, and model relations
@@ -225,15 +222,14 @@ saveModel <- function(ModelData) {
 }
 
 
-############################################
+
 #------------------------------------------#
 #             EDITING MODELS               #
 #------------------------------------------#
-############################################
 
-#----------------------------------
-#Format a Concept Table for Display
-#----------------------------------
+#----------------------------------#
+# Format a Concept Table for Display
+#----------------------------------#
 #' Formats a concept table to be displayed in the GUI.
 #'
 #' \code{formatConceptTable} formats a concept data frame to be displayed as a
@@ -271,9 +267,9 @@ formatConceptTable <- function(Concepts_df,export=FALSE) {
 }
 
 
-#-----------------------------------
+#-----------------------------------#
 # Extract vector of variables from relations list
-#-----------------------------------
+#-----------------------------------#
 #' Extracts a vector of variables from the relations list
 #' @param Relations_ls a list containing the relations data.
 #' @param var a list containing the relations data.
@@ -289,9 +285,9 @@ extract_rel <- function(Relations_ls, var, level = "causal_link"){
 }
 
 
-#----------------------------------
-#Format a Relation Table for Display
-#----------------------------------
+#----------------------------------#
+# Format a Relation Table for Display
+#----------------------------------#
 #' Formats a relation table to be displayed in the GUI or for export.
 #'
 #' \code{formatRelationTable} formats a concept data frame to be displayed as a
@@ -311,19 +307,26 @@ formatRelationTable <- function(Relations_ls,Concepts_df,export=FALSE,use.full.n
   
   causal_vars <- extract_rel(Relations_ls, "concept_id")
   affects_vars <- extract_rel(Relations_ls, "concept_id", level="affected")
-  rel_ks <- extract_rel(Relations_ls, "k", level="affected_var")
+  rel_ks <- extract_rel(Relations_ls, "k", level="affected")
   rel_types <- extract_rel(Relations_ls, "type", level="causal_group")
+  rel_group <- unlist(lapply(Relations_ls, function(a){mapply(function(x, y){rep(y, length(x$links))}, a$affected_by, seq_along(a$affected_by))}))
   if (use.full.names){
     df <- data.frame(From = name_key[causal_vars],
                      To = name_key[affects_vars],
                      Direction = extract_rel(Relations_ls, "direction"),
                      Weight = extract_rel(Relations_ls, "weight"),
+                     Grouping = rel_group,
+                     Type = rel_types,
+                     k = rel_ks,
                      stringsAsFactors = FALSE, row.names = NULL)
   } else {
     df <- data.frame(From = causal_vars,
                      To = affects_vars,
                      Direction = extract_rel(Relations_ls, "direction"),
                      Weight = extract_rel(Relations_ls, "weight"),
+                     Grouping = rel_group,
+                     Type = rel_types,
+                     k = rel_ks,
                      stringsAsFactors = FALSE, row.names = NULL)
   }
   if (export){ # untested; written 2019/05/21
@@ -333,9 +336,9 @@ formatRelationTable <- function(Relations_ls,Concepts_df,export=FALSE,use.full.n
 }
 
 
-#----------------------------------------------
-#Make an Adjacency Matrix from a Relations List
-#----------------------------------------------
+#----------------------------------------------#
+# Make an Adjacency Matrix from a Relations List
+#----------------------------------------------#
 #' Creates an adjacency matrix 
 #' \code{makeAdjacencyMatrix} creates an adjacency matrix from a relations list
 #' 
@@ -389,9 +392,9 @@ makeAdjacencyMatrix <- function(Relations_ls, Var_, Type = "Logical") {
 }
 
 
-#------------------------------
-#Initialize New Relations Entry
-#------------------------------
+#------------------------------#
+# Initialize New Relations Entry
+#------------------------------#
 #' Initialize a initial relations entry for a new concept
 #' 
 #' \code{initRelationsEntry} creates a initial relations entry for concept
@@ -421,159 +424,28 @@ initRelationsEntry <- function(VarName){
   Lst
 }
 
-#------------------
-#Plot Relationships
-#------------------
-#' Plot relationships
-#' 
-#' \code{mapRelations} displays a plot of concept relations, highlighting the
-#' relations from or to a highlighted concept.
-#' 
-#' The function maps relationships between concepts by plotting concepts in
-#' two parallel vertical lines and then showing relationships between concepts
-#' by drawing lines between the related concepts. The selected concept and
-#' related concepts are placed at the top of the plot and the lines are 
-#' highlighted.
-#' 
-#' @param Model_ls a list that includes components for model concepts and 
-#' relations
-#' @param FromConcept the name of a selected causal concept or NULL
-#' @param ToConcept the name of a selected receiving concept or NULL
-#' @param FromGroup the name of the group of the causal concepts to display or
-#' NULL
-#' @param ToGroup the name of the group of the receiving concepts to display or
-#' NULL
-#' @return a logical value identifying whether the plot can be created
-#' @export
-mapRelations <- 
-  function(Model_ls, FromConcept = NULL, FromGroup = "All", ToGroup = "All") {
-    #Extract all the concept names, variable names, and group names
-    Nn <- Model_ls$concepts$name
-    Nv <- Model_ls$concepts$concept_id
-    Ng <- Model_ls$concepts$group
-    #Functions to translate from name to variable name and vice versa
-    nameToVar <- 
-      function(Names_) {
-        Nv[match(Names_, Nn)]
-      }
-    varToName <-
-      function(Vars_) {
-        Nn[match(Vars_, Nv)]
-      }
-    #Check whether function arguments are proper
-    # if (!is.null(FromConcept)) {
-    #   FromConcept <- nameToVar(FromConcept)
-    # }
-    #Make a matrix of relations
-    Relations_mx <- makeAdjacencyMatrix(Model_ls$relations, Model_ls$concepts$concept_id, Type = "Values")$direction[Nv,Nv]
-    #Function to select portion of matrix and return a matrix regardless of how
-    #many rows and columns are selected
-    selectMatrix <- function(Matrix, RowSelect, ColSelect) {
-      NRow <- length(RowSelect)
-      NCol <- length(ColSelect)
-      if (NRow == 1 & NCol > 1) {
-        Result <- 
-          matrix(Matrix[RowSelect, ColSelect], 
-                 byrow = TRUE, 
-                 nrow = 1)
-        rownames(Result) <- RowSelect
-        colnames(Result) <- ColSelect
-      }
-      if (NCol == 1 & NRow > 1) {
-        Result <- 
-          matrix(Matrix[RowSelect, ColSelect],
-                 ncol = 1)
-        colnames(Result) <- ColSelect
-        rownames(Result) <- RowSelect
-      }
-      if (NRow == 1 & NCol == 1){
-        Result <- 
-          matrix(Matrix[RowSelect, ColSelect],
-                 nrow = 1)
-        rownames(Result) <- RowSelect
-        colnames(Result) <- ColSelect
-      }
-      if (NRow > 1 & NCol > 1) {
-        Result <- Matrix[RowSelect, ColSelect]
-      }
-      Result
-    }
-    #Select portions of relations matrix corresponding to FromGroup and ToGroup
-    if (FromGroup == "All") RowSelect <- Nv else RowSelect <- Nv[Ng == FromGroup]
-    if (ToGroup == "All") ColSelect <- Nv else ColSelect <- Nv[Ng == ToGroup]
-    Selected_mx <- selectMatrix(Relations_mx, RowSelect, ColSelect)
-    #Order rows and columns according to FromConcept
-    if (!is.null(FromConcept)) {
-      if (FromConcept %in% rownames(Selected_mx)) {
-        RowSelect <- c(FromConcept, RowSelect[RowSelect != FromConcept])
-        if (sum(!is.na(Selected_mx[FromConcept,])) != 0) {
-          ColSelect <- 
-            c(
-              ColSelect[which(!is.na(Selected_mx[FromConcept,]))],
-              ColSelect[-which(!is.na(Selected_mx[FromConcept,]))]
-            )
-        }
-        if (FromConcept %in% rownames(Selected_mx)) {
-          NumHighlighted <- sum(!is.na(Selected_mx[FromConcept,]))
-        } else {
-          NumHighlighted <- 0
-        }
-        Selected_mx <- selectMatrix(Selected_mx, RowSelect, ColSelect)
-      }
-    }
-    #Return list of plot parameters
-    MaxVal <- length(Nv)
-    YLim_ <- c(0, 1.1 * MaxVal)
-    XLim_ <- c(-3,11)
-    YVals1_ <- (nrow(Selected_mx):1 + MaxVal - nrow(Selected_mx)) * 1
-    YVals2_ <- (ncol(Selected_mx):1 + MaxVal - ncol(Selected_mx)) * 1
-    XVals_ <- c(rep(2, length(YVals1_)), rep(6, length(YVals2_)))
-    Y0_ <- rep(YVals1_, apply(!is.na(Selected_mx), 1, sum))
-    X0_ <- rep(2, length(Y0_))
-    Y1_ <- rep(YVals2_, nrow(Selected_mx))[as.vector(t(!is.na(Selected_mx)))]
-    X1_ <- rep(6,length(Y1_))
-    if (exists("NumHighlighted")) {
-      Col_ <- as.vector(t(Selected_mx))
-      Col_ <- Col_[!is.na(Col_)]
-      Col_[Col_ == "Negative"] <- "red"
-      Col_[Col_ == "Positive"] <- "black"
-      Lwd_ <-
-        c(rep(3, NumHighlighted), rep(1, length(X0_) - NumHighlighted))
-      Lty_ <- as.vector(t(Selected_mx))
-      Lty_ <- Lty_[!is.na(Lty_)]
-      Lty_[Lty_ == "Negative"] <- "2"
-      Lty_[Lty_ == "Positive"] <- "1"
-      Lty_ <- as.numeric(Lty_)
-    } else {
-      Col_ <- rep("grey", length(X0_))
-      Lwd_ <- rep(1, length(X0_))
-      Lty_ <- rep(1, length(X0_))
-    }
-    Labels1_ <- varToName(rownames(Selected_mx))
-    Labels2_ <- varToName(colnames(Selected_mx))
-    Map <- list(
-      XVals = XVals_,
-      YVals1 = YVals1_,
-      YVals2 = YVals2_,
-      XLim = XLim_,
-      YLim = YLim_,
-      Col = Col_,
-      Lwd = Lwd_,
-      Lty = Lty_,
-      Labels1 = Labels1_,
-      Labels2 = Labels2_,
-      X0 = X0_,
-      Y0 = Y0_,
-      X1 = X1_,
-      Y1 = Y1_,
-      TitlePosY = MaxVal * 1.1
-    )
-    Map
-  }    
+#---------------------------------------------------------------#
+# Define function to extract weight and direction
+#---------------------------------------------------------------#
+# Create an adjacency matrix that uses both (sign from direction + magnitude from weight) 
+# to get a single numerical value for each edge.
+adjMatrixCalc <- 
+  function(adj_mx_list){
+  # Define what numbers the linguistic values (low/highs) are converted to
+  # vals <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675, H = 0.75, VH = 0.95) 
+  vals <- c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) # Use uniform weighting for now
+  signs <- c(Positive = 1, Negative = -1)    
+  
+  adj_mx <- apply(adj_mx_list$weight, 2, function(x) vals[x]) * apply(adj_mx_list$direction, 2, function(x) signs[x])
+  adj_mx[is.na(adj_mx)] <- 0 # replace NAs with 0s 
+  rownames(adj_mx) <- colnames(adj_mx)
+  
+  return(adj_mx)
+}
 
-#---------------------------------------------------------------
-#Define function to create a dot file for plotting with GraphViz
-#---------------------------------------------------------------
+#---------------------------------------------------------------#
+# Define function to create a dot file for plotting with GraphViz
+#---------------------------------------------------------------#
 #' Create a DOT file for GraphViz
 #'
 #' \code{makeDotFile} create and save a dot file to be displayed by GraphViz
@@ -609,15 +481,8 @@ makeDot <-
     
     #Make matrices of relations and labels
     Cn <- Concepts_df$concept_id
-    Relates_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
-    Vals <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675,
-              H = 0.75, VH = 0.95)
-    Signs <- c(Positive = 1, Negative = -1)    
-    Relates.CnCn <- 
-      apply(Relates_ls$weight[Cn,Cn], 2, function(x) Vals[x]) *
-      apply(Relates_ls$direction[Cn,Cn], 2, function(x) Signs[x])
-    rownames(Relates.CnCn) <- Cn
-    Labels.CnCn <- Relates_ls$weight[Cn,Cn]
+    adj_mx_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
+    adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls)
     #Create row and column indices for selected row and column groups
     if (RowGroup == "All") {
       Cr <- Cn
@@ -630,8 +495,8 @@ makeDot <-
       Cc <- Cn[Concepts_df$group %in% ColGroup]
     }
     #Select relations and labels matrices for selected rows and columns
-    Relates.CrCc <- Relates.CnCn[Cr,Cc]
-    Labels.CrCc <- Labels.CnCn[Cr,Cc]
+    Relates.CrCc <- adj_mx_ls$weight_num[Cr,Cc]
+    Labels.CrCc <- adj_mx_ls$weight[Cr,Cc]
     Concepts. <- unique(Cr)
     #Remove rows and columns that are all NA values
     # AllNARows_ <- apply(Relates.CrCc, 1, function(x) all(is.na(x)))
@@ -680,29 +545,34 @@ makeDot <-
   }
 
 
-
-###############################################
 #---------------------------------------------#
 #             RUNNING THE MODEL               #
 #---------------------------------------------#
-###############################################
 
-#---------------
+#---------------#
 # Run simulation
-#---------------
-run_model <- function(Relations_ls, Concepts_df){
-  Cn <- Concepts_df$concept_id
-  adj_mx_list <- makeAdjacencyMatrix(Relations_ls, Cn)
-  
-  
+#---------------#
+run_model <- function(model, params){
+  Relations_ls <- model$relations
+  Cn <- model$concepts$concept_id
+  adj_mx_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
+  adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls)
+  run <- fcm.run(adj_mx_ls$weight_num, adj_mx_ls$type, adj_mx_ls$rel_group, 
+                 cn = Cn, iter = params$iter, k = params$k, init = params$init, 
+                 infer_type = params$infer_type, h = params$h, lambda = params$lambda)#,
+                 # set.concepts = scen$var, set.values = scen$val) %>% 
+    # mutate(scenario=scen$name, 
+    #        infer_type=infer_type,
+    #        h = h,
+    #        lambda = lambda,
+    #        model = m)
+  return(run)
 }
 
 
-
-
-#--------------------------------------------------------
-#Rescaling a Value from an Input Range to an Output Range
-#--------------------------------------------------------
+#--------------------------------------------------------#
+# Rescaling a Value from an Input Range to an Output Range
+#--------------------------------------------------------#
 #' Rescale value
 #'
 #' \code{rescale} rescales a value from a specified input range to a specified
@@ -727,64 +597,3 @@ rescale <- function(Value, FromRange, ToRange) {
 }
 # Example
 # rescale(1:10, c(0,10), c(0,100))
-
-#-------------------------------------------
-#Create a Fuzzy Model from Proper JSON Files
-#-------------------------------------------
-#' Create fuzzy model
-#'
-#' \code{createFuzzyModel} creates the representation of a FSDM model as an R
-#' object from JSON-formatted text files.
-#'
-#' This function reads in JSON-formatted text files which contains all of the
-#' information needed to specify a FSDM model and makes an object (a list) which
-#' contains components in the data structures needed to apply the FSDM functions
-#' to compute an output given a scenario which specifies initial conditions.
-#'
-#' @param Dir a string identifying the path to the directory where the
-#' JSON-formatted text files that specify a model are located.
-#' @param FuzzyVals a named numeric vector that relates linguistic relationships
-#' to numeric values.
-#' @return A list containing the following components:
-#' Cn = a string vector containing the names of the model concepts;
-#' Group = a named string vector containing the group name for each concept;
-#' Relates = a numeric matrix whose dimensions are equal to the number of
-#' concepts and values are the numeric weights in the model;
-#' Labels = a string matrix, with the same dimensions as Relates, which contains
-#' the fuzzy relationships between concepts (e.g. low, medium, high);
-#' ValueRange = a data frame which provides the minimum and maximum values of
-#' each concept.
-#' @export
-createFuzzyModel <- 
-  function(Dir,
-           Vals = c(VL = 0.01, L = 0.2, ML = 0.35, M = 0.5, MH = 0.67, H = 0.85, VH = 1),
-           Signs = c(Positive = 1, Negative = -1)
-  ) 
-  {
-    #Read model concept files and identify variable names and groups
-    #---------------------------------------------------------------
-    Concepts_df <- fromJSON(file.path(Dir, "concepts.json"))
-    Cn <- Concepts_df$id
-    Group.Cn <- Concepts_df$group
-    names(Group.Cn) <- Cn
-    #Create relationships matrix and assign numeric values
-    #-----------------------------------------------------
-    Relations_ls <- 
-      makeAdjacencyMatrix(fromJSON(file.path(Dir, "relations.json"), Cn, simplifyDataFrame = FALSE), 
-                          Type = "Values")
-    #Adjacency matrix of numeric values
-    Relates.CnCn <- 
-      apply(Relations_ls$weight[Cn,Cn], 2, function(x) Vals[x]) *
-      apply(Relations_ls$direction[Cn,Cn], 2, function(x) Signs[x])
-    rownames(Relates.CnCn) <- Cn
-    #Make labels for graph
-    Labels.CnCn <- Relations_ls$weight[Cn,Cn]
-    #Extract the value range for all concepts
-    ValRng_df <- Concepts_df$values[,c("min","max")]
-    ValRng_df$min <- as.numeric(ValRng_df$min)
-    ValRng_df$max <- as.numeric(ValRng_df$max)
-    rownames(ValRng_df) <- Cn
-    # Return all the model components in a list
-    list(Cn=Cn, Group=Group.Cn, Relates=Relates.CnCn, Labels=Labels.CnCn, ValueRange=ValRng_df)
-  }
-
