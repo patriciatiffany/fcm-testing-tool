@@ -185,7 +185,7 @@ shinyUI(
                          ), # tabPanel: edit relationships
                          tabPanel(
                            title = "Visualize Model",
-                           grVizOutput('relations_graph', width = "100%", height = "100%")#"800px")
+                           grVizOutput('relations_graph', height = "80%")#"800px") width = "80%", 
                          ) #tabPanel:Visualize Model
               ) # navbarPage: model setup                   
     ), # tab (1 - model)

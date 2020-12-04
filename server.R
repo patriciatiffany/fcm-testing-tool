@@ -16,7 +16,7 @@
 # 2019/07/24 - getting rid of "conceptstable" and "relationslist" reactive values - switch to model$concepts and model$relations
 
 # LOAD RESOURCES
-#--------------
+#--------------#
 # packages
 library(shiny)
 library(shinyBS)
@@ -31,12 +31,12 @@ source("helper.R")
 source('../../bcfn_seafood_access_modelling/fcm.R')
 
 #SHINY SERVER FUNCTION
-#---------------------
+#---------------------#
 shinyServer(function(input, output, session) {
   
-  #------------------------------------------------
+  #------------------------------------------------#
   #CREATE OBJECTS TO STORE MODEL (AND SCENARIO STATE)
-  #------------------------------------------------
+  #------------------------------------------------#
   #Reactive object to store current state that interface responds to
   model <- reactiveValues(status = NULL, concepts = NULL, relations = NULL)
   #Reactive object to store model history (unlimited undo)
@@ -63,9 +63,9 @@ shinyServer(function(input, output, session) {
   #Create a reactive object to keep track of various conditions
   is <- reactiveValues(newconcept = FALSE)
 
-  #-----------------------------------------------------
+  #-----------------------------------------------------#
   #DEFINE COMMON FUNCTIONS FOR MODIFYING REACTIVE VALUES
-  #-----------------------------------------------------
+  #-----------------------------------------------------#
   #Function to save the model in history
   saveLastState <- function() {
     history$status <- model$status
@@ -173,9 +173,9 @@ shinyServer(function(input, output, session) {
     # scenariolist$run <- ""
   }
   
-  #--------------------------------------
+  #--------------------------------------#
   #IMPLEMENT INTERFACE FOR STARTING MODEL
-  #--------------------------------------
+  #--------------------------------------#
   #Define GUI element to select model from a list
   output$selectExistingModelFile <- renderUI({
     selectInput(
@@ -328,9 +328,9 @@ shinyServer(function(input, output, session) {
   
   
   
-  #----------------------------------------------
-  #IMPLEMENT INTERFACE FOR EDITING MODEL CONCEPTS
-  #----------------------------------------------
+  #----------------------------------------------#
+  ### IMPLEMENT INTERFACE FOR EDITING MODEL CONCEPTS
+  #----------------------------------------------#
   #Update concept form based on what is selected in table
   observeEvent(
     c(input$conceptsTableEditing_rows_selected,input$undoConceptAction), # fixed broken undo by adding additional argument here 2019/05/22
@@ -421,20 +421,34 @@ shinyServer(function(input, output, session) {
       model$status$lastedit <- as.character(Sys.time())
 
       #Update model relations
-      Relations_ls <- model$relations
-      RelationsNames_ <- 
-        unlist(lapply(Relations_ls, function(x) x$concept_id))
-      RelationIdx <- which(RelationsNames_ == Var)
-      Relations_ls[[RelationIdx]] <- NULL
-      for (i in 1:length(Relations_ls)) {
-        Affects_ls <- Relations_ls[[i]]$affects
-        IsVar <- unlist(lapply(Affects_ls, function(x) x$concept_id == Var))
-        if (any(IsVar)) {
-          Affects_ls[[which(IsVar)]] <- NULL
-        }
-        Relations_ls[[i]]$affects <- Affects_ls
+      ExistingAffected <- 
+        unlist(lapply(model$relations, function(x) x$concept_id))
+      idx <- which(ExistingAffected == Var)
+      if (length(idx)!=0){
+        # Delete relations where the deleted concept is affected
+        model$relations[[idx]] <- NULL
       }
-      model$relations <- Relations_ls
+      
+      c_idxs <- which(relationstable()$From==Var)
+      if (length(c_idxs)>0){
+        for (i in c_idxs){
+          g <- relationstable()[i,"Grouping"]
+          a_idx <- which(ExistingAffected == relationstable()[i,"To"])
+        
+          links <- model$relations[[a_idx]]$affected_by[[g]]$links
+          ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
+          c_idx <- which(ExistingLinked == Var)
+          # Delete relations where the deleted concept is the causal concept
+          model$relations[[a_idx]]$affected_by[[g]]$links[[c_idx]] <- NULL
+          if (length(model$relations[[a_idx]]$affected_by[[g]]$links) == 0){
+            model$relations[[a_idx]]$affected_by[[g]] <- NULL
+            if (length(model$relations[[a_idx]]$affected_by) == 0){
+              model$relations[[a_idx]] <- NULL
+            }
+          }
+        }
+      }
+      
       #Update the input form
       updateConceptForm(RowNum)
     }) #observeEvent: deleteConcept
@@ -456,9 +470,9 @@ shinyServer(function(input, output, session) {
   
   
   
-  #-----------------------------------------------
+  #-----------------------------------------------#
   #IMPLEMENT INTERFACE FOR EDITING MODEL RELATIONS
-  #-----------------------------------------------
+  #-----------------------------------------------#
   #Update relations form based on what is selected in table
   observeEvent(
     c(input$relationsTableEditing_rows_selected,input$undoRelationAction),
@@ -714,9 +728,9 @@ shinyServer(function(input, output, session) {
     }
   )
   
-  #-----------------------------------------------
+  #-----------------------------------------------#
   # IMPLEMENT MODEL RUNS
-  #-----------------------------------------------
+  #-----------------------------------------------#
   
   run_params <- reactive({
     k_df <- merge(model$concepts["concept_id"], 
@@ -747,9 +761,9 @@ shinyServer(function(input, output, session) {
   )
   
 
-  #-----------------------------------------------
+  #-----------------------------------------------#
   # OUTPUT TABLES FOR UI
-  #-----------------------------------------------
+  #-----------------------------------------------#
   
   #Output model concepts table (for preview)
   output$conceptsTable <- DT::renderDataTable(

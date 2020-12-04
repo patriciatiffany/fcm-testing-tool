@@ -311,20 +311,20 @@ formatRelationTable <- function(Relations_ls,Concepts_df,export=FALSE,use.full.n
   rel_types <- extract_rel(Relations_ls, "type", level="causal_group")
   rel_group <- unlist(lapply(Relations_ls, function(a){mapply(function(x, y){rep(y, length(x$links))}, a$affected_by, seq_along(a$affected_by))}))
   if (use.full.names){
-    df <- data.frame(To = name_key[affects_vars],
+    df <- data.frame(From = name_key[causal_vars],
+                     To = name_key[affects_vars],
                      k = rel_ks,
                      Grouping = rel_group,
                      Type = rel_types,
-                     From = name_key[causal_vars],
                      Direction = extract_rel(Relations_ls, "direction"),
                      Weight = extract_rel(Relations_ls, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
   } else {
-    df <- data.frame(To = affects_vars,
+    df <- data.frame(From = causal_vars,
+                     To = affects_vars,
                      k = rel_ks,
                      Grouping = rel_group,
                      Type = rel_types,
-                     From = causal_vars,
                      Direction = extract_rel(Relations_ls, "direction"),
                      Weight = extract_rel(Relations_ls, "weight"),
                      stringsAsFactors = FALSE, row.names = NULL)
@@ -374,7 +374,7 @@ makeAdjacencyMatrix <- function(Relations_ls, Var_, Type = "Logical") {
     
     # For number of relations present, find what is affecting it and for each edge variable
     # enter its value in the corresponding adjacency matrices
-    for (i in length(rs)){#1:dim(rs)[1]){ 
+    for (i in 1:length(rs)){#1:dim(rs)[1]){ 
       id <- rs[[i]]$concept_id #rs$concept_id[i]
       infl_list <- rs[[i]]$affected_by #rs[rs["concept_id"] == id,"affected_by"]
       # Loop over all sets of links (Note: tfn data considers only 1 set)
