@@ -43,9 +43,9 @@ shinyServer(function(input, output, session) {
   history <- reactiveValues(status = NULL, concepts = NULL, relations = NULL)#,  previousRowNum = NULL) #note: attempts to keep rows from resetting have failed 2019/05/22
   #Global variable that flags whenever a new relationship is defined
   flag_newRelation <- FALSE
-  #Create a reactive object to store current selected effects
+  #Create a reactive object to store current selected effects (what are the relations corresponding to the currently selected causal concept?)
   effects <- reactiveValues(
-      to = "",
+      to = "", # <- a vector
       from = "",
       direction = "",
       strength = "",
@@ -515,17 +515,18 @@ shinyServer(function(input, output, session) {
   })
 
   
-  #On change of selected causal concept, update causal info in GUI
+  # On change of selected causal concept, update GUI and current effect ("effects") 
+  # to match the relations table
   observeEvent(
     c(input$causalConcept,input$undoRelationAction),
     {
-      # Deselect rows in relations table
+      # First deselect rows in relations table
       relationsTableEditing_proxy %>% selectRows(NULL)
-      
       if (input$causalConcept != "" && length(input$causalConcept)>0){
+        # Get all the relations that stem from this causal concept
          Effects_df <- relationstable()[relationstable()$From==input$causalConcept,]
-        if (nrow(Effects_df)>0){#(!is.null(Effects_df)) {
-          effects$to <- Effects_df$To #Effects_df$Affects
+        if (nrow(Effects_df)>0){
+          effects$to <- Effects_df$To
           effects$from <- Effects_df$From
           effects$direction <- Effects_df$Direction
           effects$strength <- Effects_df$Weight
@@ -533,7 +534,7 @@ shinyServer(function(input, output, session) {
           effects$grouping <- Effects_df$Grouping
           effects$k <- Effects_df$k
           effects$type <- Effects_df$Type
-          #in following if, change effects$from to effects$to 
+          # Then, match the one that corresponds to the affected concept selected (if applicable)
           if (input$affectedConcept %in% effects$to) {
             updateTextInput(session, "causalDirection",
                             value = effects$direction[effects$to == input$affectedConcept])
@@ -570,11 +571,12 @@ shinyServer(function(input, output, session) {
       }
     } 
   )
-  #On change of selected affected concept, update causal info in GUI
+  # On change of selected affected concept, update GUI and current effect ("effects") 
+  # to match the relations table
   observeEvent(
     input$affectedConcept,
     {
-      #in following if, change effects$from to effects$to 
+      # (Assume causal concept already selected): match the one that corresponds to the affected concept selected (if applicable)
       if (input$affectedConcept %in% effects$to) {
         flag_newRelation <<- FALSE
         updateTextInput(session, "causalDirection",
@@ -664,19 +666,31 @@ shinyServer(function(input, output, session) {
       #Remove relation from model
       CausalConcept <- 
         model$concepts$concept_id[model$concepts$concept_id == input$causalConcept]
-      CausalConcepts_ <-
-        unlist(lapply(model$relations, function(x) x$concept_id))
-      CausalIdx <- which(CausalConcepts_ == CausalConcept)
       AffectedConcept <- 
         model$concepts$concept_id[model$concepts$concept_id == input$affectedConcept]
-      Effects_ls <- 
-        model$relations[[CausalIdx]]$affects
-      EffectIdx <- 
-        which(unlist(lapply(Effects_ls, function(x) x$concept_id)) == AffectedConcept)
-      if (length(EffectIdx) != 0) {
-        Effects_ls[[EffectIdx]] <- NULL
-        model$relations[[CausalIdx]]$affects <- Effects_ls
+      
+      ExistingAffected<- unlist(lapply(model$relations, function(x) x$concept_id))
+      
+      if ((length(ExistingAffected)>0) && (AffectedConcept %in% ExistingAffected)){
+        # Find where to delete
+        a_idx <- which(ExistingAffected == AffectedConcept)
+        links <- model$relations[[a_idx]]$affected_by[[effects$grouping]]$links
+        ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
+        if (length(ExistingLinked)>0 && CausalConcept %in% ExistingLinked){
+          c_idx <- which(ExistingLinked == CausalConcept)
+        } else{
+          c_idx <- length(ExistingLinked) + 1
+        }
+        # Remove link, and if that was the only link, remove link group or/ and affected concept from the list of relations
+        model$relations[[a_idx]]$affected_by[[effects$grouping]]$links[[c_idx]] <- NULL
+        if (length(model$relations[[a_idx]]$affected_by[[effects$grouping]]$links) == 0){
+          model$relations[[a_idx]]$affected_by[[effects$grouping]] <- NULL
+          if (length(model$relations[[a_idx]]$affected_by) == 0){
+            model$relations[[a_idx]] <- NULL
+          }
+        }
       }
+      
       #Update text fields
       updateTextInput(session, "causalDirection", value = "")
       updateTextInput(session, "causalStrength", value = "")
