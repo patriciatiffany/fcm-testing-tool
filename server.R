@@ -622,28 +622,26 @@ shinyServer(function(input, output, session) {
              weight = input$causalStrength,
              description = input$causalDesc)
       
-      if (length(ExistingAffected) != 0) {
-          if ((AffectedConcept %in% ExistingAffected)){
-            # Insert new values in existing slot
+      if ((length(ExistingAffected)>0) && (AffectedConcept %in% ExistingAffected)) {
+            # Find where the new data should go
             a_idx <- which(ExistingAffected == AffectedConcept)
             links <- model$relations[[a_idx]]$affected_by[[effects$grouping]]$links
             ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
-            c_idx <- which(ExistingLinked == CausalConcept)
+            if (length(ExistingLinked)>0 && CausalConcept %in% ExistingLinked){
+              c_idx <- which(ExistingLinked == CausalConcept)
+            } else{
+              c_idx <- length(ExistingLinked) + 1
+            }
+            # Insert new values in existing slot
             model$relations[[a_idx]]$affected_by[[effects$grouping]]$links[[c_idx]] <- NewEffect_ls
             model$relations[[a_idx]]$affected_by[[effects$grouping]]$type <- input$relType
             model$relations[[a_idx]]$k <- input$relK
-          } else {
+      } else {
             # Create new slot for new affected concept at the end of the list
-            model$relations[[length(model$relations) + 1]] <-
+            model$relations[[length(ExistingAffected) + 1]] <-
               list(concept_id = AffectedConcept, 
                    affected_by = list(list(links = list(NewEffect_ls), type = input$relType)),
                    k = input$relK)
-          }
-      } else{ # If there are no relations to begin with, just add affected concept to the start of the relations list
-        model$relations[[1]] <-
-          list(concept_id = AffectedConcept, 
-               affected_by = list(list(links = list(NewEffect_ls), type = input$relType)),
-               k = input$relK)
       }
       # Reset flag for new relation
       flag_newRelation <<- FALSE
