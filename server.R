@@ -51,8 +51,8 @@ shinyServer(function(input, output, session) {
       strength = "",
       description = "")
   
-  run <- reactiveValues(results = NULL, parameters= NULL, set_concepts = NULL, set_values = NULL)
- 
+  run <- reactiveValues(results = NULL, parameters= NULL, constraints_list = NULL)
+
    # #Create a reactive object to store scenario data in
   # scenario <- 
   #   reactiveValues(status = NULL, values = NULL, history = NULL)
@@ -732,6 +732,7 @@ shinyServer(function(input, output, session) {
   # IMPLEMENT MODEL RUNS
   #-----------------------------------------------#
   
+  # Get run parameters from UI
   run_params <- reactive({
     k_df <- merge(model$concepts["concept_id"], 
                   data.frame(concept_id=sapply(model$relations, "[[", "concept_id"), 
@@ -744,8 +745,33 @@ shinyServer(function(input, output, session) {
          iter = 30)
   })
   
+  #Define dropdown element to select concept for constraining / clamping
+  output$selectScenVar <- renderUI({
+    selectInput(
+      inputId = "scenVar",
+      label = "Select value to constrain/ clamp",
+      choices = sort(model$concepts$concept_id)
+    )
+  })
+  
+  # Save constraint
   observeEvent(
-    input$runFCMAaction,
+    input$addFCMConstraint,
+    {
+      run$constraints_list[input$scenVar] <- input$scenVal
+    }
+  )
+  
+  # Delete constraint
+  observeEvent(
+    input$deleteFCMConstraint,
+    {
+      run$constraints_list <- run$constraints_list[which(names(run$constraints_list)!=input$scenVar)]
+    }
+  )
+  
+  observeEvent(
+    input$runFCMAction,
     {
       if (is.null(model$relations)){
         showNotification(
@@ -755,7 +781,8 @@ shinyServer(function(input, output, session) {
           type = "message"
         )
       } else{
-        run$results <- run_model(model,run_params())
+        run$parameters <- run_params()
+        run$results <- run_model(model, run$parameters, run$constraints_list)
       }
     }
   )
@@ -764,6 +791,15 @@ shinyServer(function(input, output, session) {
   #-----------------------------------------------#
   # OUTPUT TABLES FOR UI
   #-----------------------------------------------#
+  
+  # Display values constrained
+  output$constraintsTable <- renderTable(
+    if (is.null(run$constraints_list)){
+      data.frame(Variable = c(), Value = c())
+    } else{
+      data.frame(Variable = names(run$constraints_list), Value = run$constraints_list)
+    }
+  )
   
   #Output model concepts table (for preview)
   output$conceptsTable <- DT::renderDataTable(
@@ -811,6 +847,8 @@ shinyServer(function(input, output, session) {
       grViz(Dot_)
     }
   })
+  
+  
   
   
   # Model output: table

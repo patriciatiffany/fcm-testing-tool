@@ -192,10 +192,25 @@ shinyUI(
     tabPanel("2) FCM Exploration",
              sidebarLayout(
                sidebarPanel(
-                 sliderInput("sliderFCM_h", "Choose h", min=-0.5, max=0.5, step = 0.5, value = 0),
-                 sliderInput("sliderFCM_lambda", "Choose lambda", min=0, max=10, step = 0.5, value = 3),     
-                 sliderInput("sliderFCM_init", "Choose initial values for unconstrained concepts", min=0, max=1, step = 0.5, value = 1),
-                 actionButton("runFCMAaction", "Run simulation")
+                 tabsetPanel(type = "tabs",
+                     tabPanel("Set Parameters",
+                              hr(),
+                              sliderInput("sliderFCM_h", "Choose h", min=-0.5, max=0.5, step = 0.5, value = 0),
+                              sliderInput("sliderFCM_lambda", "Choose lambda", min=0, max=10, step = 0.5, value = 3),     
+                              sliderInput("sliderFCM_init", "Choose initial values for unconstrained concepts", min=0, max=1, step = 0.5, value = 1),
+                     ),
+                     tabPanel("Add Constraints",
+                              hr(),
+                              uiOutput("selectScenVar"),
+                              sliderInput("scenVal", "Clamp value", min=0, max=1, step = 0.5, value = 1),
+                              actionButton("addFCMConstraint", "Add/ modify constraint"),
+                              actionButton("deleteFCMConstraint", "Delete constraint"),
+                              hr(),
+                              tableOutput("constraintsTable"),
+                     )
+                 ),
+                 hr(),
+                 actionButton("runFCMAction", "Run simulation")
                ), #sidebarPanel
                mainPanel(
                  h4("FCM Run results"),
@@ -206,6 +221,7 @@ shinyUI(
                  # squashing function ($x$ above), while the 'add' inference takes in the mean of the influences."),
                  p("Note: In the current implementation of the model, k's are automatically set to 1 for all concepts
                    that do not have any incoming influences."),
+                 hr(),
                  DT::dataTableOutput("resultsTable")
                ) # mainPanel
              ) # sidebarLayout

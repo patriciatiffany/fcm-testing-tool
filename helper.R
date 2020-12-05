@@ -552,15 +552,23 @@ makeDot <-
 #---------------#
 # Run simulation
 #---------------#
-run_model <- function(model, params){
+run_model <- function(model, params, constraints){
   Relations_ls <- model$relations
   Cn <- model$concepts$concept_id
   adj_mx_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
   adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls)
+  
+  if (is.null(constraints)){
+    scen <- list(var = NULL, val = NULL)
+  } else{
+    scen <- list(var = names(constraints),
+                 val = constraints)
+  }
+  
   run <- fcm.run(adj_mx_ls$weight_num, adj_mx_ls$type, adj_mx_ls$rel_group, 
                  cn = Cn, iter = params$iter, k = params$k, init = params$init, 
-                 infer_type = params$infer_type, h = params$h, lambda = params$lambda)#,
-                 # set.concepts = scen$var, set.values = scen$val) %>% 
+                 infer_type = params$infer_type, h = params$h, lambda = params$lambda,
+                 set.concepts = scen$var, set.values = scen$val) #%>% 
     # mutate(scenario=scen$name, 
     #        infer_type=infer_type,
     #        h = h,
