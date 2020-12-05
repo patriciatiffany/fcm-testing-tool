@@ -34,9 +34,9 @@ shinyUI(
                titlePanel(span("About")),
                #br(),
                h3("What does this tool do?"),
-               p("The Qualitative Systems Modeller is an application for modelling qualitative, directed graphs. A directed graph is composed of 'nodes' and 'edges', where ", strong("nodes are concepts"), " that are being modeled and ", strong("edges specify relationships between concepts"), ". The following figure illustrates a simple qualitative systems model."),
+               p("The Qualitative Systems Modeller is an application for modelling qualitative, directed graphs. A directed graph is composed of 'nodes' and 'edges', where ", strong("nodes are concepts"), " that are being modeled and ", strong("edges specify relationships between concepts"), "."),
                #img(src = "demo_graph.png", height = 200, width = 275, style = "display: block; margin-left: auto; margin-right: auto"),
-               p("The direction of each edge (i.e. the direction of the arrow) specifies the relationship between causal and affected concepts. Edge weights specify the strength (Very Low to Very High) and directionality (+ or -) of causal effects. A positive sign for an edge weight means that an increase in the causing concept causes an increase in the affected concept."),
+               p("The direction of each edge (i.e. the direction of the arrow) specifies the relationship between causal and affected concepts. Edge weights specify the strength (Very Low to Very High) and directionality (+ or -) of causal effects."), # A positive sign for an edge weight means that an increase in the causing concept causes an increase in the affected concept."),
                hr(),
                h4("Copyright and License"),
                p("This application was loosely built based on The Logic Laboratory, an R Shiny application developed by Brian Gregor (Oregon Systems Analytics) with funding from the Oregon Department of Transportation (Copyright 2016). The original software is licensed with the Apache 2 open source license.")
@@ -201,12 +201,14 @@ shinyUI(
                      ),
                      tabPanel("Add Constraints",
                               hr(),
+                              p('Current constraints:'),
+                              tableOutput("constraintsTable"),
+                              hr(),
+                              p("Add constraints:"),
                               uiOutput("selectScenVar"),
                               sliderInput("scenVal", "Clamp value", min=0, max=1, step = 0.5, value = 1),
                               actionButton("addFCMConstraint", "Add/ modify constraint"),
-                              actionButton("deleteFCMConstraint", "Delete constraint"),
-                              hr(),
-                              tableOutput("constraintsTable"),
+                              actionButton("deleteFCMConstraint", "Delete constraint")
                      )
                  ),
                  hr(),
@@ -222,6 +224,10 @@ shinyUI(
                  p("Note: In the current implementation of the model, k's are automatically set to 1 for all concepts
                    that do not have any incoming influences."),
                  hr(),
+                 fluidRow(
+                   column(3, p("Parameters used:")), column(9, tableOutput("paramsTable")),
+                 ),
+                 p("Simulation results:"),
                  DT::dataTableOutput("resultsTable")
                ) # mainPanel
              ) # sidebarLayout

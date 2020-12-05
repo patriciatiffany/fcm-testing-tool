@@ -716,7 +716,6 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$undoRelationAction,
     {
-      #change effects$from to effects$to
       undoRelationEdit()
       updateTextInput(session, "causalDirection",
                       value = effects$direction[effects$to == input$affectedConcept])
@@ -770,6 +769,7 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # Run model
   observeEvent(
     input$runFCMAction,
     {
@@ -791,6 +791,15 @@ shinyServer(function(input, output, session) {
   #-----------------------------------------------#
   # OUTPUT TABLES FOR UI
   #-----------------------------------------------#
+  
+  # Display parameters for run
+  output$paramsTable <- renderTable(
+    if (!is.null(run$parameters)){
+      params <- run$parameters
+      data.frame("Function type" = params$infer_type, "h" = params$h, "Lambda" = params$lambda, 
+                 check.names = FALSE)
+    }
+  )
   
   # Display values constrained
   output$constraintsTable <- renderTable(
