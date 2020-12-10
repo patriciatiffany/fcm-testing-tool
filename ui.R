@@ -195,6 +195,8 @@ shinyUI(
                  tabsetPanel(type = "tabs",
                      tabPanel("Set Parameters",
                               hr(),
+                              selectInput("selectFCM_fn", label = "FCM thresholding function",
+                                          choices = c("Sigmoid (Logistic)"="sigmoid-exp","Sigmoid (Tanh)"="sigmoid-tanh","Linear (f(x) = x)"="linear"), selected="sigmoid-exp"),
                               sliderInput("sliderFCM_h", "Choose h", min=-0.5, max=0.5, step = 0.5, value = 0),
                               sliderInput("sliderFCM_lambda", "Choose lambda", min=0, max=10, step = 0.5, value = 3),     
                               sliderInput("sliderFCM_init", "Choose initial values for unconstrained concepts", min=0, max=1, step = 0.5, value = 1),

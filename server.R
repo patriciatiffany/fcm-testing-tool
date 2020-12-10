@@ -742,7 +742,7 @@ shinyServer(function(input, output, session) {
     names(ks) <- k_df$concept_id
     
     list(h = input$sliderFCM_h, lambda = input$sliderFCM_lambda, k= ks, 
-         init = input$sliderFCM_init, infer_type = "sigmoid-exp",
+         init = input$sliderFCM_init, infer_type = input$selectFCM_fn,
          iter = 30)
   })
   
@@ -870,11 +870,16 @@ shinyServer(function(input, output, session) {
   output$resultsPlotSim <- renderPlotly({
     if (!is.null(run$results)){
       df <- run$results
-      df$timestep <- rownames(df)
+      df$timestep <- 1:nrow(df)
       df <- tidyr::pivot_longer(df, !timestep, names_to = "concept", values_to = "value")
+      if (run$parameters$infer_type == "sigmoid-exp"){
+        ylims <- c(0,1)
+      } else {
+        ylims <- c(-1,1)
+      }
       plot_ly(df, x = ~timestep, y = ~value) %>%
         add_lines(linetype = ~concept) %>%
-        layout(yaxis = list(range = c(0, 1)))
+        layout(yaxis = list(range = ylims))
     }
   })
   
