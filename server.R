@@ -23,6 +23,8 @@ library(shinyBS)
 library(jsonlite)
 library(DT)
 library(ggplot2)
+library(tidyr)
+library(plotly)
 library(DiagrammeR)
 library(readxl)
 ## helper.R Script
@@ -858,13 +860,22 @@ shinyServer(function(input, output, session) {
   })
   
   
-  
-  
   # Model output: table
   output$resultsTable <- DT:: renderDataTable(
     run$results,
     server = FALSE,
     options = list(dom='tp', pageLength = 15)
   )
+  
+  output$resultsPlotSim <- renderPlotly({
+    if (!is.null(run$results)){
+      df <- run$results
+      df$timestep <- rownames(df)
+      df <- tidyr::pivot_longer(df, !timestep, names_to = "concept", values_to = "value")
+      plot_ly(df, x = ~timestep, y = ~value) %>%
+        add_lines(linetype = ~concept) %>%
+        layout(yaxis = list(range = c(0, 1)))
+    }
+  })
   
 }) #end: shinyServer

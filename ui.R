@@ -228,6 +228,7 @@ shinyUI(
                    column(3, p("Parameters used:")), column(9, tableOutput("paramsTable")),
                  ),
                  p("Simulation results:"),
+                 plotlyOutput(outputId = "resultsPlotSim"),
                  DT::dataTableOutput("resultsTable")
                ) # mainPanel
              ) # sidebarLayout
