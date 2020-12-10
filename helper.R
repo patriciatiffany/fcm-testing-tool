@@ -430,10 +430,9 @@ initRelationsEntry <- function(VarName){
 # Create an adjacency matrix that uses both (sign from direction + magnitude from weight) 
 # to get a single numerical value for each edge.
 adjMatrixCalc <- 
-  function(adj_mx_list){
-  # Define what numbers the linguistic values (low/highs) are converted to
-  # vals <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675, H = 0.75, VH = 0.95) 
-  vals <- c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) # Use uniform weighting for now
+  function(adj_mx_list, vals){
+  # Note: vals defines what numbers the linguistic values (low/highs) are converted to
+  # e.g. vals <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675, H = 0.75, VH = 0.95) 
   signs <- c(Positive = 1, Negative = -1)    
   
   adj_mx <- apply(adj_mx_list$weight, 2, function(x) vals[x]) * apply(adj_mx_list$direction, 2, function(x) signs[x])
@@ -471,10 +470,14 @@ adjMatrixCalc <-
 #' @return A string specification of a DOT.
 #' @export
 makeDot <-
-  function(Relations_ls, Concepts_df, RowGroup = "All", ColGroup = "All",
+  function(Model, RowGroup = "All", ColGroup = "All",
            orientation = "Portrait", rankdir = "Top-to-Bottom", shape = "box",
            Show = "label")
   {
+    Concepts_df <- Model$concepts
+    Relations_ls <- Model$relations
+    weight_vals <- Model$weight_vals
+    
     # Name to variable key to use for labels
     name_key <- Concepts_df$concept
     names(name_key) <- Concepts_df$concept_id
@@ -482,7 +485,7 @@ makeDot <-
     #Make matrices of relations and labels
     Cn <- Concepts_df$concept_id
     adj_mx_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
-    adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls)
+    adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls, weight_vals)
     #Create row and column indices for selected row and column groups
     if (RowGroup == "All") {
       Cr <- Cn
@@ -556,7 +559,7 @@ run_model <- function(model, params, constraints){
   Relations_ls <- model$relations
   Cn <- model$concepts$concept_id
   adj_mx_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
-  adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls)
+  adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls, model$weight_vals)
   
   if (is.null(constraints)){
     scen <- list(var = NULL, val = NULL)

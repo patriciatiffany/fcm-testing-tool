@@ -20,17 +20,22 @@
 # packages
 library(shiny)
 library(shinyBS)
-library(jsonlite)
+library(plotly)
 library(DT)
+library(jsonlite)
 library(ggplot2)
 library(tidyr)
-library(plotly)
 library(DiagrammeR)
 library(readxl)
 ## helper.R Script
 source("helper.R") 
 ## model algorithm
 source('../../bcfn_seafood_access_modelling/fcm.R')
+
+
+# Define global variables in server
+weight_vals_default <- c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) # Use uniform weighting for now
+#c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675, H = 0.75, VH = 0.95) 
 
 #SHINY SERVER FUNCTION
 #---------------------#
@@ -39,10 +44,11 @@ shinyServer(function(input, output, session) {
   #------------------------------------------------#
   #CREATE OBJECTS TO STORE MODEL (AND SCENARIO STATE)
   #------------------------------------------------#
+  
   #Reactive object to store current state that interface responds to
-  model <- reactiveValues(status = NULL, concepts = NULL, relations = NULL)
+  model <- reactiveValues(status = NULL, concepts = NULL, relations = NULL, weight_vals = weight_vals_default) # default defined in global.R
   #Reactive object to store model history (unlimited undo)
-  history <- reactiveValues(status = NULL, concepts = NULL, relations = NULL)#,  previousRowNum = NULL) #note: attempts to keep rows from resetting have failed 2019/05/22
+  history <- reactiveValues(status = NULL, concepts = NULL, relations = NULL, weight_vals = NULL)#,  previousRowNum = NULL) #note: attempts to keep rows from resetting have failed 2019/05/22
   #Global variable that flags whenever a new relationship is defined
   flag_newRelation <- FALSE
   #Create a reactive object to store current selected effects (what are the relations corresponding to the currently selected causal concept?)
@@ -73,18 +79,22 @@ shinyServer(function(input, output, session) {
     history$status <- model$status
     history$concepts <- model$concepts
     history$relations <- model$relations
+    history$weight_vals <- model$weight_vals
   }
   #Function to swap model and history (i.e. undo)
   swapState <- function() {
     Status <- model$status
     Concepts <- model$concepts
     Relations <- model$relations
+    Weights <- model$weight_vals
     model$status <- history$status
     model$concepts <- history$concepts
     model$relations <- history$relations
+    model$weight_vals <- history$weight_vals
     history$status <- Status
     history$concepts <- Concepts
     history$relations <- Relations
+    history$weight_vals <- Weights
   }
   #Function to undo concept edit
   undoConceptEdit <- function() {
@@ -157,9 +167,11 @@ shinyServer(function(input, output, session) {
     history$status = NULL
     history$concepts = NULL
     history$relations = NULL
+    history$weight_vals = NULL
     model$concepts = NULL
     model$relations = NULL
     model$status = NULL
+    model$weight_vals = weight_vals_default
     effects$to <- ""
     effects$from <- ""
     effects$direction <- ""
@@ -729,6 +741,16 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # Change edge weight values
+  # Save constraint
+  observeEvent(
+    input$updateWeight,
+    {
+      model$weight_vals[input$qualWeight] <- input$quantWeight
+    }
+  )
+  
+  
   #-----------------------------------------------#
   # IMPLEMENT MODEL RUNS
   #-----------------------------------------------#
@@ -826,11 +848,30 @@ shinyServer(function(input, output, session) {
   
   relationsTableEditing_proxy <- dataTableProxy('relationsTableEditing') # for selecting rows
 
+  # Output display of numerical equivalents of weights in model
+  output$weightsTable <- renderTable({
+    data.frame("Qualitative weight" = names(model$weight_vals),
+               "Numerical value" = model$weight_vals, check.names = FALSE)
+  })
+  
   #Implement relations graph
   output$relations_graph <- renderGrViz({
     if (length(model$concepts)>0){
-      Dot_ <- makeDot(Relations_ls = model$relations,
-                      Concepts_df = model$concepts,
+      Dot_ <- makeDot(Model = model,
+                      RowGroup = "All",#input$causalGroup,
+                      ColGroup = "All",#input$affectedGroup,
+                      orientation = "Portrait",#Landscape",#input$graphOrientation,
+                      rankdir = "Top-to-Bottom",#input$graphLayout,
+                      shape = "box",#input$nodeShape,
+                      Show = "Level")#input$edgeLabel)
+      grViz(Dot_)
+    }
+  })
+  
+  # Add a second (identical) graph for display in the FCM exploration tab
+  output$relations_graph2 <- renderGrViz({ 
+    if (length(model$concepts)>0){
+      Dot_ <- makeDot(Model = model,
                       RowGroup = "All",#input$causalGroup,
                       ColGroup = "All",#input$affectedGroup,
                       orientation = "Portrait",#Landscape",#input$graphOrientation,

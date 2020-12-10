@@ -9,6 +9,7 @@
 #Packages
 library(shiny)
 library(shinyBS)
+library(plotly)
 library(DT)
 library(ggplot2)
 library(DiagrammeR)
@@ -66,7 +67,7 @@ shinyUI(
                                          selected = "select_existing"
                                        ),
                                        
-                                       # Upload a model from an excel file
+                                       # Upload a model from an excel file - DEPRECATED 2020/12
                                        #--------------------
                                        conditionalPanel(condition = "input.modelAction == 'select_xl'",
                                                         p("Upload an excel file (.xlsx) here. The single workbook file should contain 2 spreadsheets:"),
@@ -183,6 +184,25 @@ shinyUI(
                                     ) #mainPanel
                                   ) # sidebarLayout
                          ), # tabPanel: edit relationships
+                         tabPanel("Edit Weight Values",
+                           sidebarLayout(
+                             sidebarPanel(
+                               h4("Edit numerical values for edge weights"),
+                               hr(),
+                               selectInput(inputId = "qualWeight", 
+                                           label = "Qualitative Causal Strength", 
+                                           choices = c("", "VL", "L", "ML", "M", "MH", "H", "VH"),
+                                           selected = "M"),
+                               sliderInput(inputId = "quantWeight",
+                                           label = "Numerical value",
+                                           min=0, max=1, step = 0.05, value = 1),
+                               actionButton("updateWeight", "Update"),
+                             ),
+                             mainPanel(
+                               tableOutput("weightsTable")
+                             )
+                           )
+                         ), # tabPanel: edit edge weight values (qualitative -> quantitative values)
                          tabPanel(
                            title = "Visualize Model",
                            grVizOutput('relations_graph', height = "80%")#"800px") width = "80%", 
@@ -192,6 +212,8 @@ shinyUI(
     tabPanel("2) FCM Exploration",
              sidebarLayout(
                sidebarPanel(
+                 grVizOutput('relations_graph2', height = "150px"),
+                 hr(),
                  tabsetPanel(type = "tabs",
                      tabPanel("Set Parameters",
                               hr(),
