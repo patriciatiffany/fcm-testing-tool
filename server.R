@@ -794,24 +794,6 @@ shinyServer(function(input, output, session) {
   # OUTPUT TABLES FOR UI
   #-----------------------------------------------#
   
-  # Display parameters for run
-  output$paramsTable <- renderTable(
-    if (!is.null(run$parameters)){
-      params <- run$parameters
-      data.frame("Function type" = params$infer_type, "h" = params$h, "Lambda" = params$lambda, 
-                 check.names = FALSE)
-    }
-  )
-  
-  # Display values constrained
-  output$constraintsTable <- renderTable(
-    if (is.null(run$constraints_list)){
-      data.frame(Variable = c(), Value = c())
-    } else{
-      data.frame(Variable = names(run$constraints_list), Value = run$constraints_list)
-    }
-  )
-  
   #Output model concepts table (for preview)
   output$conceptsTable <- DT::renderDataTable(
     formatConceptTable(model$concepts), 
@@ -859,6 +841,39 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  # Model parameters: FCM function
+  output$FCMFunction <- renderPlot({
+    h <- input$sliderFCM_h
+    lambda <- input$sliderFCM_lambda
+    switch(input$selectFCM_fn,
+           "sigmoid-exp" =  curve(1/(1 + exp(-lambda * (x - h))), from = -1, to = 1, ylim = c(0,1)),
+           "sigmoid-tanh" = curve(tanh(lambda * (x - h)), from = -1, to = 1, ylim = c(-1,1)),
+           "linear" = curve((x), from = -1, to = 1, ylim = c(-1,1))
+    )
+  })
+  
+  # Display parameters for run
+  output$paramsTable <- renderTable(
+    if (!is.null(run$parameters)){
+      params <- run$parameters
+      if (params$infer_type == "linear"){
+        data.frame("Function type" = params$infer_type, "h" = NA, "Lambda" = NA, 
+                   check.names = FALSE)
+      } else{
+        data.frame("Function type" = params$infer_type, "h" = params$h, "Lambda" = params$lambda, 
+                   check.names = FALSE)
+      }
+    }
+  )
+  
+  # Display values constrained
+  output$constraintsTable <- renderTable(
+    if (is.null(run$constraints_list)){
+      data.frame(Variable = c(), Value = c())
+    } else{
+      data.frame(Variable = names(run$constraints_list), Value = run$constraints_list)
+    }
+  )
   
   # Model output: table
   output$resultsTable <- DT:: renderDataTable(
