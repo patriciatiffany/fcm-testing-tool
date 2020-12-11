@@ -472,7 +472,8 @@ adjMatrixCalc <-
 makeDot <-
   function(Model, RowGroup = "All", ColGroup = "All",
            orientation = "Portrait", rankdir = "Top-to-Bottom", shape = "box",
-           Show = "label")
+           Show = "label",
+           Conjunctions = TRUE)
   {
     Concepts_df <- Model$concepts
     Relations_ls <- Model$relations
@@ -498,44 +499,44 @@ makeDot <-
       Cc <- Cn[Concepts_df$group %in% ColGroup]
     }
     #Select relations and labels matrices for selected rows and columns
-    Relates.CrCc <- adj_mx_ls$weight_num[Cr,Cc]
-    Labels.CrCc <- adj_mx_ls$weight[Cr,Cc]
-    Concepts. <- unique(Cr)
-    #Remove rows and columns that are all NA values
-    # AllNARows_ <- apply(Relates.CrCc, 1, function(x) all(is.na(x)))
-    # AllNACols_ <- apply(Relates.CrCc, 2, function(x) all(is.na(x)))
-    # Relates.CrCc <- Relates.CrCc[!AllNARows_, !AllNACols_]
-    # Labels.CrCc <- Labels.CrCc[!AllNARows_, !AllNACols_]
+    concepts_to_plot <- unique(Cr)
+    rels_to_plot <- adj_mx_ls$weight_num[Cr,Cc]
+    labels_to_plot <- adj_mx_ls$weight[Cr,Cc]
+    types_to_plot <- adj_mx_ls$type[Cr,Cc]
+    
     #Update Cr and Cc and identify unique concepts
-    Cr <- rownames(Relates.CrCc)
-    Cc <- colnames(Relates.CrCc)
+    Cr <- rownames(rels_to_plot)
+    Cc <- colnames(rels_to_plot)
     #Convert rankdir argument
     if (rankdir == "Top-to-Bottom") rankdir <- "TB"
     if (rankdir == "Left-to-Right") rankdir <- "LR"
     #Make DOT data
     Dot_ <-
       paste("digraph {\n orientation =", orientation, ";\n rankdir =", rankdir, ";\n")
-    for (concept in Concepts.) {
+    for (concept in concepts_to_plot) {
       c_ <- gsub("\\-","\\_",concept) # replace hyphens with underscores for proper grViz syntax
       l_ <- gsub("([[:punct:]])", "\\\\\\1", name_key[concept]) # escape punctuation characters in node labels
       Dot_ <- paste(Dot_, c_, "[ shape =", shape, ", label =\"", l_,"\"];\n")
     }
     for (cr in Cr) {
       for (cc in Cc) {
-        Value <- Relates.CrCc[cr,cc]
+        Value <- rels_to_plot[cr,cc]
         if (!is.na(Value)) {
           if (Show == "label") {
-            Label <- Labels.CrCc[cr,cc]
+            Label <- labels_to_plot[cr,cc]
           } else {
             Label <- Value
           }
+          if (Conjunctions){
+            Label <- paste(Label, toupper(types_to_plot[cr,cc]), sep="\n")
+          }
           if (Value != 0) {
             if (Value > 0) {
-              Dot_ <- paste0(Dot_, cr, " -> ", cc, "[ label=", Label, " ];\n")
+              Dot_ <- paste0(Dot_, cr, " -> ", cc, "[ label='", Label, "'];\n")
             } else {
               Dot_ <-
                 paste0(
-                  Dot_, cr, " -> ", cc, "[ color=red, fontcolor=red, style=dashed, label=", Label, " ];\n"
+                  Dot_, cr, " -> ", cc, "[ color=red, fontcolor=red, style=dashed, label='", Label, "'];\n"
                 )
             }
           }
