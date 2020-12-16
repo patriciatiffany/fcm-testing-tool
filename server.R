@@ -655,7 +655,8 @@ shinyServer(function(input, output, session) {
       if ((length(ExistingAffected)>0) && (AffectedConcept %in% ExistingAffected)) {
             # Find where the new data should go
             a_idx <- which(ExistingAffected == AffectedConcept)
-            links <- model$relations[[a_idx]]$affected_by[[effects$grouping]]$links
+            group_idx <- input$relGrouping
+            links <- model$relations[[a_idx]]$affected_by[[group_idx]]$links
             ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
             if (length(ExistingLinked)>0 && CausalConcept %in% ExistingLinked){
               c_idx <- which(ExistingLinked == CausalConcept)
@@ -663,8 +664,8 @@ shinyServer(function(input, output, session) {
               c_idx <- length(ExistingLinked) + 1
             }
             # Insert new values in existing slot
-            model$relations[[a_idx]]$affected_by[[effects$grouping]]$links[[c_idx]] <- NewEffect_ls
-            model$relations[[a_idx]]$affected_by[[effects$grouping]]$type <- input$relType
+            model$relations[[a_idx]]$affected_by[[group_idx]]$links[[c_idx]] <- NewEffect_ls
+            model$relations[[a_idx]]$affected_by[[group_idx]]$type <- input$relType
             model$relations[[a_idx]]$k <- input$relK
       } else {
             # Create new slot for new affected concept at the end of the list
