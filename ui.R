@@ -238,26 +238,41 @@ shinyUI(
                               actionButton("addFCMConstraint", "Add/ modify constraint"),
                               actionButton("deleteFCMConstraint", "Delete constraint")
                      )
-                 ),
-                 hr(),
-                 actionButton("runFCMAction", "Run simulation")
+                 )
                ), #sidebarPanel
                mainPanel(
-                 h4("FCM Run results"),
-                 hr(),
-                 # p("The logistic sigmoid inference squashing function takes the form of 
-                 #   $f(x;\lambda,h) = \frac{1}{1+e^{-\lambda(x-h)}}$. This means that h controls the location 
-                 #   of the threshold, and lambda is an indication of the steepness of the sigmoid.The 'req' inference takes the minimum of all influences to feed in the 
-                 # squashing function ($x$ above), while the 'add' inference takes in the mean of the influences."),
-                 p("Note: In the current implementation of the model, k's are automatically set to 1 for all concepts
-                   that do not have any incoming influences."),
-                 hr(),
-                 fluidRow(
-                   column(3, p("Parameters used:")), column(9, tableOutput("paramsTable")),
-                 ),
-                 p("Simulation results:"),
-                 plotlyOutput(outputId = "resultsPlotSim"),
-                 DT::dataTableOutput("resultsTable")
+                 tabsetPanel(type = "tabs",
+                            tabPanel("Run Results",
+                                     br(),
+                                     h4("FCM Run results"),
+                                     p("Run single simulation using parameters selected"),
+                                     actionButton("runFCMAction", "Run simulation"),
+                                     hr(),
+                                     # p("The logistic sigmoid inference squashing function takes the form of 
+                                     #   $f(x;\lambda,h) = \frac{1}{1+e^{-\lambda(x-h)}}$. This means that h controls the location 
+                                     #   of the threshold, and lambda is an indication of the steepness of the sigmoid.The 'req' inference takes the minimum of all influences to feed in the 
+                                     # squashing function ($x$ above), while the 'add' inference takes in the mean of the influences."),
+                                     p("Note: In the current implementation of the model, k's are automatically set to 1 for all concepts
+                                       that do not have any incoming influences."),
+                                     hr(),
+                                     fluidRow(
+                                       column(3, p("Parameters used:")), column(9, tableOutput("paramsTable")),
+                                     ),
+                                     p("Simulation results:"),
+                                     plotlyOutput(outputId = "resultsPlotSim"),
+                                     DT::dataTableOutput("resultsTable")
+                                     ), #tabPanel: Run Results
+                            tabPanel("Configure Multiple Runs",
+                                     br(),
+                                     h4("Parameter Sweep"),
+                                     p("Launch multiple runs (parameter sweep will override selected value(s) in the sidebar)"),
+                                     actionButton("runFCMSweepAction", "Run parameter sweep"),
+                                     hr(),
+                                     DT::dataTableOutput("sweepEquilTable"),
+                                     hr(),
+                                     plotlyOutput(outputId = "sweepPlot")
+                          ) # tabPanel: Parameter Sweep
+                 ) # tabsetPanel
                ) # mainPanel
              ) # sidebarLayout
     ) # tab (2 - fcm)

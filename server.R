@@ -23,6 +23,7 @@ library(shinyBS)
 library(plotly)
 library(DT)
 library(jsonlite)
+library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(DiagrammeR)
@@ -59,7 +60,7 @@ shinyServer(function(input, output, session) {
       strength = "",
       description = "")
   
-  run <- reactiveValues(results = NULL, parameters= NULL, constraints_list = NULL)
+  run <- reactiveValues(results = NULL, parameters= NULL, constraints_list = NULL, sweep_params = NULL, sweep_results = NULL)
 
    # #Create a reactive object to store scenario data in
   # scenario <- 
@@ -812,6 +813,45 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  observeEvent(
+    input$runFCMSweepAction,
+    {
+      if (is.null(model$relations)){
+        showNotification(
+          ui = "No model loaded. Please load a model before proceeding.",
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      } else{
+        varying_params <- list(lambda = c(0.5, 1, 3, 5))
+        param_vals <- run_params() # Get parameters from UI
+        
+        # Store information in sweep_results and sweep_params (keep independent from normal runs)
+        N <- prod(sapply(varying_params,length)) # calculate how many runs there will be
+        run$sweep_params <- vector("list",  N) # create new list that will contain all runs (permutations) of sweeps
+        run$sweep_results <- vector("list",  N)
+        
+        n <- 1
+        for (p in 1:length(varying_params)){
+          pn = names(varying_params)[p]
+          pvals = varying_params[[p]]
+          # run$parameters[pn] = "multiple"
+          for (i in 1:length(pvals)){
+            params_run = replace(param_vals, pn, pvals[i]) # store all parameters here, using the value in the parameter sweep
+            res <- run_model(model, params_run, run$constraints_list) %>% 
+              mutate(infer_type = params_run$infer_type,
+                     h = params_run$h,
+                     lambda = params_run$lambda, 
+                     timestep = seq.int(params_run$iter))
+            run$sweep_params[[n]] <- params_run
+            run$sweep_results[[n]] <- res
+            n <- n + 1
+          }
+        }
+      }
+    }
+  )
 
   #-----------------------------------------------#
   # OUTPUT TABLES FOR UI
@@ -937,6 +977,27 @@ shinyServer(function(input, output, session) {
       plot_ly(df, x = ~timestep, y = ~value) %>%
         add_lines(linetype = ~concept) %>%
         layout(yaxis = list(range = ylims))
+    }
+  })
+  
+  # Model output: multiple runs
+  
+  output$sweepEquilTable <- DT:: renderDataTable(
+    dplyr::bind_rows(lapply(run$sweep_results, function(x) x[nrow(x),])), # Get last row of each run
+    server = FALSE,
+    options = list(dom='tp')
+  )
+  
+  output$sweepPlot <- renderPlotly({
+    if (!is.null(run$sweep_results)){
+      df <- bind_rows(run$sweep_results)
+      # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
+      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda), names_to = "concept", values_to = "value") 
+      plot <- ggplot(df, aes(x = timestep, y = value, colour = concept)) + 
+        geom_line() + facet_grid(h ~ lambda, labeller = label_both)
+      
+      ggplotly(plot)
+      
     }
   })
   
