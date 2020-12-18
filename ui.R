@@ -121,9 +121,9 @@ shinyUI(
                                       textInput("conceptName", "Concept Name"),
                                       textInput("conceptID", "ID (one-word identifier)"),
                                       textareaInput("conceptDesc", "Concept Description (optional)"),
-                                      textInput("minValue", "Minimum Value"),
-                                      textInput("maxValue", "Maximum Value"),
-                                      textareaInput("valuesDesc", "Values Description (optional)"),
+                                      # textInput("minValue", "Minimum Value"),
+                                      # textInput("maxValue", "Maximum Value"),
+                                      # textareaInput("valuesDesc", "Values Description (optional)"),
                                       textInput("conceptGroup", "Concept Group"),
                                       conditionalPanel(
                                         condition = "input.modelAction != 'runModel'",

@@ -131,12 +131,12 @@ shinyServer(function(input, output, session) {
                     value = model$concepts$concept_id[RowNum])
     updateTextInput(session, "conceptDesc",
                     value = model$concepts$description[RowNum])
-    updateTextInput(session, "minValue",
-                    value = model$concepts$values$min[RowNum])
-    updateTextInput(session, "maxValue",
-                    value = model$concepts$values$max[RowNum])
-    updateTextInput(session, "valuesDesc",
-                    value = model$concepts$values$description[RowNum])
+    # updateTextInput(session, "minValue",
+    #                 value = model$concepts$values$min[RowNum])
+    # updateTextInput(session, "maxValue",
+    #                 value = model$concepts$values$max[RowNum])
+    # updateTextInput(session, "valuesDesc",
+    #                 value = model$concepts$values$description[RowNum])
     updateTextInput(session, "conceptGroup",
                     value = model$concepts$group[RowNum])
   }
@@ -365,9 +365,9 @@ shinyServer(function(input, output, session) {
       model$concepts$concept[1] <- ""
       model$concepts$concept_id[1] <- ""
       model$concepts$description[1] <- ""
-      model$concepts$values$min[1] <- ""
-      model$concepts$values$max[1] <- ""
-      model$concepts$values$description[1] <- ""
+      # model$concepts$values$min[1] <- ""
+      # model$concepts$values$max[1] <- ""
+      # model$concepts$values$description[1] <- ""
       model$concepts$group[1] <- ""
       RowNum <- input$conceptsTableEditing_rows_selected
       updateConceptForm(RowNum)
@@ -399,9 +399,9 @@ shinyServer(function(input, output, session) {
       model$concepts$concept[RowNum] <- input$conceptName
       model$concepts$concept_id[RowNum] <- input$conceptID
       model$concepts$description[RowNum] <- input$conceptDesc
-      model$concepts$values$min[RowNum] <- input$minValue
-      model$concepts$values$max[RowNum] <- input$maxValue
-      model$concepts$values$description[RowNum] <- input$valuesDesc
+      # model$concepts$values$min[RowNum] <- input$minValue
+      # model$concepts$values$max[RowNum] <- input$maxValue
+      # model$concepts$values$description[RowNum] <- input$valuesDesc
       model$concepts$group[RowNum] <- input$conceptGroup
       model$status$lastedit <- as.character(Sys.time())
       #Reset Concept$IsNew

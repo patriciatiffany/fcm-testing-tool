@@ -248,8 +248,8 @@ formatConceptTable <- function(Concepts_df,export=FALSE) {
   if (export==FALSE){
     df <- data.frame(Name = Concepts_df$name,
                      ID = Concepts_df$concept_id,
-                     Minimum = Concepts_df$values[["min"]],
-                     Maximum = Concepts_df$values[["max"]],
+                     # Minimum = Concepts_df$values[["min"]],
+                     # Maximum = Concepts_df$values[["max"]],
                      #Group = Concepts_df$group,
                      stringsAsFactors = FALSE)
   } else{ # untested; written 2019/05/20
@@ -257,9 +257,9 @@ formatConceptTable <- function(Concepts_df,export=FALSE) {
                      ID = Concepts_df$concept_id,
                      #"Group or Type" = Concepts_df$group,
                      Description = Concepts_df$description,
-                     Minimum = Concepts_df$values[["min"]],
-                     Maximum = Concepts_df$values[["max"]],
-                     "Values (Min/Max) Description" = Concepts_df$values[["description"]],
+                     # Minimum = Concepts_df$values[["min"]],
+                     # Maximum = Concepts_df$values[["max"]],
+                     # "Values (Min/Max) Description" = Concepts_df$values[["description"]],
                      check.names = FALSE,
                      stringsAsFactors = FALSE)
   }
