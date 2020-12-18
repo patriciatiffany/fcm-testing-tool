@@ -538,7 +538,7 @@ shinyServer(function(input, output, session) {
     # Note: right now the only difference (between this and the table that is displayed in the GUI 
     # is that full names are not used here. If eventually full names are used in the editing relations dropdowns
     # then this can be consolidated and used for the GUI too.
-    if (!is.null(model$relations)){
+    if (length(model$relations)!=0){
       formatRelationTable(model$relations,model$concepts,use.full.names=FALSE,export=TRUE)
     }
   })
@@ -552,8 +552,10 @@ shinyServer(function(input, output, session) {
       # First deselect rows in relations table
       relationsTableEditing_proxy %>% selectRows(NULL)
       if (input$causalConcept != "" && length(input$causalConcept)>0){
+        # Get relations table to find indices
+        tbl <- isolate(relationstable())
         # Get all the relations that stem from this causal concept
-         Effects_df <- relationstable()[relationstable()$From==input$causalConcept,]
+         Effects_df <- tbl[tbl$From==input$causalConcept,]
         if (nrow(Effects_df)>0){
           effects$to <- Effects_df$To
           effects$from <- Effects_df$From
@@ -578,7 +580,7 @@ shinyServer(function(input, output, session) {
             updateTextInput(session, "relType",
                             value = effects$type[effects$to == input$affectedConcept])
             # and change the selected row in the table to match
-            r <- which(relationstable()$From==input$causalConcept & relationstable()$To == input$affectedConcept)
+            r <- which(tbl$From==input$causalConcept & tbl$To == input$affectedConcept)
             relationsTableEditing_proxy %>% selectRows(as.numeric(r))
           } else {
             updateTextInput(session, "causalDirection", value = "")
@@ -621,7 +623,7 @@ shinyServer(function(input, output, session) {
         updateTextInput(session, "relType",
                         value = effects$type[effects$to == input$affectedConcept])
         # and change the selected row in the table to match
-        r <- which(relationstable()$From==input$causalConcept & relationstable()$To == input$affectedConcept)
+        r <- which(isolate(relationstable())$From==input$causalConcept & isolate(relationstable())$To == input$affectedConcept)
         relationsTableEditing_proxy %>% selectRows(as.numeric(r))
       } else {
         flag_newRelation <<- TRUE
