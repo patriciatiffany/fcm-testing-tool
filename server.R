@@ -434,22 +434,33 @@ shinyServer(function(input, output, session) {
       Var <- model$concepts$concept_id[RowNum]
       model$concepts <- model$concepts[-RowNum,]
       model$status$lastedit <- as.character(Sys.time())
-
-      #Update model relations
-      ExistingAffected <- 
+      
+      # Get relationstable for reference
+      tbl <- isolate(relationstable())
+      
+      # Define vector for deleting items in relations list
+      items_to_delete <- c()
+      
+      # Variables in the model that are affected by something (in relations list)
+      ExistingAffected <-
         unlist(lapply(model$relations, function(x) x$concept_id))
+      
+      # Find index in relations list that corresponds to the deleted concept
       idx <- which(ExistingAffected == Var)
+      
       if (length(idx)!=0){
         # Delete relations where the deleted concept is affected
-        model$relations[[idx]] <- NULL
+        items_to_delete <- c(items_to_delete, idx)
       }
       
-      c_idxs <- which(relationstable()$From==Var)
+      # Find what this deleted concept affects
+      c_idxs <- which(tbl$From==Var) # Get indices of relevant rows in the relations table
       if (length(c_idxs)>0){
-        for (i in c_idxs){
-          g <- relationstable()[i,"Grouping"]
-          a_idx <- which(ExistingAffected == relationstable()[i,"To"])
-        
+        for (i in c_idxs){ # For each relevant row...
+          g <- tbl[i,"Grouping"] # Get the group number corresponding to the link
+          LinkTo <- tbl[i,"To"]
+          a_idx <- which(ExistingAffected == LinkTo)  # Get index of the affected concept
+          
           links <- model$relations[[a_idx]]$affected_by[[g]]$links
           ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
           c_idx <- which(ExistingLinked == Var)
@@ -457,13 +468,18 @@ shinyServer(function(input, output, session) {
           model$relations[[a_idx]]$affected_by[[g]]$links[[c_idx]] <- NULL
           if (length(model$relations[[a_idx]]$affected_by[[g]]$links) == 0){
             model$relations[[a_idx]]$affected_by[[g]] <- NULL
+            # If the affected concept no longer has any more links, them remove the whole thing from the relations list
             if (length(model$relations[[a_idx]]$affected_by) == 0){
-              model$relations[[a_idx]] <- NULL
+              items_to_delete <- c(items_to_delete, a_idx)
             }
           }
         }
       }
-      
+
+      #Now delete primary elements in relations list (do this later and all at once so the indices don't change after each deletion)
+      if (length(items_to_delete)>0){
+        model$relations <- model$relations[-items_to_delete]
+      }
       #Update the input form
       updateConceptForm(RowNum)
     }) #observeEvent: deleteConcept
