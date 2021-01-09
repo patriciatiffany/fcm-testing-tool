@@ -1,19 +1,16 @@
 #helper.R
-#Author: Patricia Angkiriwang, University of British Columbia; based on code by Brian Gregor, Oregon Systems Analytics LLC
-#Copyright: 2016, Oregon Department of Transportation 2016
-#Modifications copyright: 2019, Patricia Angkiriwang
-#License: Apache 2
+# Author: Patricia Angkiriwang, University of British Columbia; 
+# based on code by Brian Gregor, Oregon Systems Analytics LLC
 
-#LOAD RESOURCES
-#--------------
-#Packages
+# === LOAD RESOURCES ==================
+# Packages
 library(shiny)
 library(shinyBS)
 library(plotly)
 library(DT)
 library(ggplot2)
 library(DiagrammeR)
-#Function to support text area inputs
+# Function to support text area inputs
 textareaInput <- function(id, label, value="", rows=5, cols=40, class="form-control"){
   tags$div(
     class="form-group shiny-input-container",
@@ -22,14 +19,11 @@ textareaInput <- function(id, label, value="", rows=5, cols=40, class="form-cont
 }
 
 
-#SHINY UI FUNCTION
-#-----------------
+# === SHINY UI FUNCTION ==================
 shinyUI(
   navbarPage(
     "Qualitative Systems Modeller",
-    
-    #Introduction Screen
-    #-------------------
+    # Introduction Screen -------------------
     tabPanel("About",
              fluidPage(
                titlePanel(span("About")),
@@ -40,9 +34,10 @@ shinyUI(
                p("The direction of each edge (i.e. the direction of the arrow) specifies the relationship between causal and affected concepts. Edge weights specify the strength (Very Low to Very High) and directionality (+ or -) of causal effects."), # A positive sign for an edge weight means that an increase in the causing concept causes an increase in the affected concept."),
                hr(),
                h4("Copyright and License"),
-               p("This application was loosely built based on The Logic Laboratory, an R Shiny application developed by Brian Gregor (Oregon Systems Analytics) with funding from the Oregon Department of Transportation (Copyright 2016). The original software is licensed with the Apache 2 open source license.")
+               p("This application was loosely built based on The Logic Laboratory, an R Shiny application developed by Brian Gregor (Oregon Systems Analytics) with funding from the Oregon Department of Transportation (2016). The original software is licensed with the Apache 2 open source license.")
              )
     ),
+    # User Info -------------------
     tabPanel("0) Enter User Info",
              mainPanel(
                h4("User Information"),
@@ -56,45 +51,15 @@ shinyUI(
     ),
     tabPanel( "1) The Model",
               navbarPage("Set up your model",
+              # Model upload -------------------
                          tabPanel( "Upload model",
                                    sidebarLayout(
                                      sidebarPanel(
                                        radioButtons(
                                          inputId = "modelAction", 
                                          label = "Model Action",
-                                         choices = list(#"Upload an Excel File" = "select_xl",
-                                           "Select an Existing Model" = "select_existing"),
+                                         choices = list("Select an Existing Model" = "select_existing"),
                                          selected = "select_existing"
-                                       ),
-                                       
-                                       # Upload a model from an excel file - DEPRECATED 2020/12
-                                       #--------------------
-                                       conditionalPanel(condition = "input.modelAction == 'select_xl'",
-                                                        p("Upload an excel file (.xlsx) here. The single workbook file should contain 2 spreadsheets:"),
-                                                        p("The first sheet should contain the list of concepts/elements, with columns:"),
-                                                        tags$ol(
-                                                          tags$li("ID"), 
-                                                          tags$li("Concept name"), 
-                                                          tags$li("Group or Type (optional)"), 
-                                                          tags$li("Description (optional)"), 
-                                                          tags$li("Min (optional; default = 0)"), 
-                                                          tags$li("Max (optional; default = 100))")),
-                                                        p("The second sheet within the same workbook should contain the list of relationships/ connections, with columns:"),
-                                                        tags$ol(
-                                                          tags$li("From (ID of the causal concept)"), 
-                                                          tags$li("To (ID of the affected concept)"), 
-                                                          tags$li("Direction (e.g. Positive or Negative)"), 
-                                                          tags$li("Weight/ Importance (L,M,H)"),
-                                                          tags$li("Description (optional)"),
-                                                          tags$li("Label (e.g. + or -)")),
-                                                        hr(),
-                                                        textInput("modelName", "Model Name"),
-                                                        # -------- interface to upload files
-                                                        fileInput("xlFileName", "Choose Excel File",
-                                                                  accept = c(
-                                                                    ".xls",".xlsx")
-                                                        ),
-                                                        checkboxInput("uploadheader", "My file contains a header", TRUE)
                                        ),
                                        conditionalPanel(
                                          condition = "input.modelAction == 'select_existing'",
@@ -110,9 +75,9 @@ shinyUI(
                                          tabPanel("Concepts", hr(),DT::dataTableOutput("conceptsTable"), value = "concepts_table"),
                                          tabPanel("Relations", hr(), DT::dataTableOutput("relationsTable"), value = "relations_table"))
                                      )
-                                     
                                    ) # sidebarLayout
                          ), # tabPanel: upload model 
+              # Model edit -------------------
                          tabPanel("Edit Concepts",
                                   sidebarLayout(
                                     sidebarPanel(
@@ -209,6 +174,7 @@ shinyUI(
                          ) #tabPanel:Visualize Model
               ) # navbarPage: model setup                   
     ), # tab (1 - model)
+    # Run model with varying parameters --------
     tabPanel("2) FCM Exploration",
              sidebarLayout(
                sidebarPanel(
@@ -245,8 +211,13 @@ shinyUI(
                             tabPanel("Run Results",
                                      br(),
                                      h4("FCM Run results"),
-                                     p("Run single simulation using parameters selected"),
-                                     actionButton("runFCMAction", "Run simulation"),
+                                     fluidRow(
+                                       column(4, p("Run single simulation using parameters selected"),
+                                              actionButton("runFCMAction", "Run simulation")),
+                                       column(8, conditionalPanel(condition = "input.runFCMAction",
+                                        textInput("scenarioName", label="Save this scenario", value="scenario-label"),
+                                        actionButton("addScenario", "Add to scenario comparisons"))
+                                     )),
                                      hr(),
                                      # p("The logistic sigmoid inference squashing function takes the form of 
                                      #   $f(x;\lambda,h) = \frac{1}{1+e^{-\lambda(x-h)}}$. This means that h controls the location 
@@ -270,8 +241,25 @@ shinyUI(
                                      hr(),
                                      DT::dataTableOutput("sweepEquilTable"),
                                      hr(),
+                                     fluidRow(
                                      plotlyOutput(outputId = "sweepPlot")
-                          ) # tabPanel: Parameter Sweep
+                                     )
+                          ), # tabPanel: Parameter Sweep
+                          tabPanel("Compare Scenarios",
+                                   br(),
+                                   h4("Scenario comparison views"),
+                                   fluidRow(
+                                     column(7, uiOutput("scenariosToPlot")),
+                                     column(5, actionButton("resetScenarios", "Reset scenario list"),hr(),
+                                            fileInput("scenFileToLoad", label="Load a saved set of scenarios"),accept=".Rmd")
+                                   ),
+                                   hr(),
+                                   actionButton("launchScenarioView", "Launch scenario comparison view"),
+                                   plotlyOutput(outputId = "scenarioPlot", height = "650px"),
+                                   plotlyOutput(outputId = "scenarioPlotBars", height = "650px"),
+                                   textInput("scenFileName", label="File Name", value="saved_scenarios.Rmd"),
+                                   actionButton("saveScenarios", "Save these scenarios for later")
+                                   )
                  ) # tabsetPanel
                ) # mainPanel
              ) # sidebarLayout

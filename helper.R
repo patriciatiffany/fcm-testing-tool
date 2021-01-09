@@ -1,16 +1,10 @@
 #helper.R
-#Author: Patricia Angkiriwang, University of British Columbia; based on code by Brian Gregor, Oregon Systems Analytics LLC
-#Copyright: 2016, Oregon Department of Transportation 2016
-#Copyright: 2019, Brian Gregor
-#Modifications copyright: 2019, Patricia Angkiriwang
-#License: Apache 2
+# Author: Patricia Angkiriwang, University of British Columbia; 
+# based on code by Brian Gregor, Oregon Systems Analytics LLC
 
-# note: the templates folder in the models folder needs to exist
+# Note: the templates folder in the models folder needs to exist
 
-
-#------------------------------------------#
-# INITIALIZING, LOADING, AND SAVING MODELS #
-#------------------------------------------#
+# === INITIALIZING, LOADING, AND SAVING MODELS ==================
 #--------------------------------#
 # Initialize a New Model
 #--------------------------------#
@@ -222,11 +216,7 @@ saveModel <- function(ModelData) {
 }
 
 
-
-#------------------------------------------#
-#             EDITING MODELS               #
-#------------------------------------------#
-
+# === EDITING MODELS ==================
 #----------------------------------#
 # Format a Concept Table for Display
 #----------------------------------#
@@ -549,10 +539,7 @@ makeDot <-
   }
 
 
-#---------------------------------------------#
-#             RUNNING THE MODEL               #
-#---------------------------------------------#
-
+# === RUNNING THE MODEL ==================
 #---------------#
 # Run simulation
 #---------------#
