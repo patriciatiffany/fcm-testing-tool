@@ -179,6 +179,9 @@ shinyUI(
              sidebarLayout(
                sidebarPanel(
                  grVizOutput('relations_graph2', height = "150px"),
+                 numericInput("numIterations", 
+                              "Timesteps to run", 
+                              value = 30),
                  hr(),
                  tabsetPanel(type = "tabs",
                      tabPanel("Set Parameters",
@@ -200,9 +203,10 @@ shinyUI(
                               hr(),
                               p("Add constraints:"),
                               uiOutput("selectScenVar"),
-                              sliderInput("scenVal", "Clamp value", min=0, max=1, step = 0.5, value = 1),
+                              uiOutput("clampSlider"),
                               actionButton("addFCMConstraint", "Add/ modify constraint"),
-                              actionButton("deleteFCMConstraint", "Delete constraint")
+                              actionButton("deleteFCMConstraint", "Delete constraint"),
+                              actionButton("clearAllFCMConstraints", "Clear all constraints")
                      )
                  )
                ), #sidebarPanel
@@ -214,10 +218,11 @@ shinyUI(
                                      fluidRow(
                                        column(4, p("Run single simulation using parameters selected"),
                                               actionButton("runFCMAction", "Run simulation")),
-                                       column(8, conditionalPanel(condition = "input.runFCMAction",
+                                       column(5, conditionalPanel(condition = "input.runFCMAction",
                                         textInput("scenarioName", label="Save this scenario", value="scenario-label"),
-                                        actionButton("addScenario", "Add to scenario comparisons"))
-                                     )),
+                                        actionButton("addScenario", "Add to scenario comparisons")))
+                                              
+                                     ),
                                      hr(),
                                      # p("The logistic sigmoid inference squashing function takes the form of 
                                      #   $f(x;\lambda,h) = \frac{1}{1+e^{-\lambda(x-h)}}$. This means that h controls the location 
@@ -236,13 +241,23 @@ shinyUI(
                             tabPanel("Configure Multiple Runs",
                                      br(),
                                      h4("Parameter Sweep"),
-                                     p("Launch multiple runs (parameter sweep will override selected value(s) in the sidebar)"),
-                                     actionButton("runFCMSweepAction", "Run parameter sweep"),
-                                     hr(),
-                                     DT::dataTableOutput("sweepEquilTable"),
-                                     hr(),
-                                     fluidRow(
-                                     plotlyOutput(outputId = "sweepPlot")
+                                     conditionalPanel(condition = "input.selectFCM_fn != 'linear'",
+                                          p("Launch multiple runs (parameter sweep will override selected value(s) in the sidebar)"),
+                                          selectInput("sweepingParam", label = "Parameter to sweep", choices = c("lambda","h")),
+                                          textInput("sweepingVals", "Values", placeholder = "Enter values separated by a comma...", value="0.5, 1, 3, 5"),
+                                          textOutput("sweepText"),
+                                          br(),
+                                          actionButton("runFCMSweepAction", "Run parameter sweep"),
+                                          hr(),
+                                          DT::dataTableOutput("sweepEquilTable"),
+                                          hr(),
+                                          fluidRow(
+                                            plotlyOutput(outputId = "sweepPlot")
+                                          ),
+                                          plotlyOutput(outputId = "sweepPlotBars")
+                                     ),
+                                     conditionalPanel(condition = "input.selectFCM_fn == 'linear'",
+                                          br(), p("Parameter sweep not available for linear thresholding functions.")
                                      )
                           ), # tabPanel: Parameter Sweep
                           tabPanel("Compare Scenarios",
@@ -251,15 +266,26 @@ shinyUI(
                                    fluidRow(
                                      column(7, uiOutput("scenariosToPlot")),
                                      column(5, actionButton("resetScenarios", "Reset scenario list"),hr(),
-                                            fileInput("scenFileToLoad", label="Load a saved set of scenarios"),accept=".Rmd")
+                                            fileInput("scenFileToLoad", label="Load a saved set of scenarios"), accept=".Rmd")
                                    ),
-                                   hr(),
                                    actionButton("launchScenarioView", "Launch scenario comparison view"),
+                                   hr(),
+                                   br(),
+                                   uiOutput('selectScenarioYVar'),
+                                   br(),
+                                   conditionalPanel(condition="input.scenarioPlotY != 'value'",
+                                                    span( textOutput('scenarioPlotWarning'), style="color:red")),
                                    plotlyOutput(outputId = "scenarioPlot", height = "650px"),
+                                   hr(),
                                    plotlyOutput(outputId = "scenarioPlotBars", height = "650px"),
-                                   textInput("scenFileName", label="File Name", value="saved_scenarios.Rmd"),
-                                   actionButton("saveScenarios", "Save these scenarios for later")
-                                   )
+                                   hr(),
+                                   fluidRow(
+                                     column(6, textInput("scenFileName", label="File Name", value="saved_scenarios.Rmd"),
+                                            actionButton("saveScenarios", "Save these scenarios for later")),
+                                     column(6,textInput("scenDataFileName", label="File Name", value="scenario_data.Rmd"),
+                                            actionButton("saveScenarioData", "Save the results as a data frame"))
+                                   ), br()
+                           ) # tabPanel: Compare Scenarios
                  ) # tabsetPanel
                ) # mainPanel
              ) # sidebarLayout

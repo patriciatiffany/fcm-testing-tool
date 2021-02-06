@@ -28,6 +28,8 @@ source('fcm.R') # model algorithm
 
 # Define global variables in server --------------
 weight_vals_default <- c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) # Use uniform weighting for now
+  #c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.625, H = 0.75, VH = 0.9) 
+
 #c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675, H = 0.75, VH = 0.95) 
 
 
@@ -629,7 +631,7 @@ shinyServer(function(input, output, session) {
     
     list(h = input$sliderFCM_h, lambda = input$sliderFCM_lambda, k= ks, 
          init = input$sliderFCM_init, infer_type = input$selectFCM_fn,
-         iter = 30)
+         iter = input$numIterations)
   })
   
   # Output: Define dropdown element to select concept for constraining / clamping --------------
@@ -639,6 +641,14 @@ shinyServer(function(input, output, session) {
       label = "Select value to constrain/ clamp",
       choices = sort(model$concepts$concept_id)
     )
+  })
+  
+  # Output: Define slider to select clamp value ------------
+  output$clampSlider <- renderUI({
+    sliderInput(
+      inputId = "scenVal", 
+      label = "Clamp value", 
+      min=ifelse(input$selectFCM_fn == 'sigmoid-tanh',-1,0), max=1, step = 0.5, value = 1)
   })
   
   # Save constraint for FCM  ------------------
@@ -657,6 +667,14 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # Clear all constraints ------------------
+  observeEvent(
+    input$clearAllFCMConstraints,
+    {
+      run$constraints_list <- NULL
+    }
+  )
+  
   # Run model ------------------
   observeEvent(
     input$runFCMAction,
@@ -671,7 +689,10 @@ shinyServer(function(input, output, session) {
       } else{
         run$parameters <- run_params()
         run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
-          mutate(timestep = seq.int(run$parameters$iter))
+          mutate(timestep = seq.int(run$parameters$iter),
+                 infer_type = run$parameters$infer_type,
+                 h = run$parameters$h,
+                 lambda = run$parameters$lambda)
         
         # Change scenario name text when a new set of constraints/parameters are run
         if (run$parameters[["infer_type"]]=="linear"){
@@ -686,7 +707,7 @@ shinyServer(function(input, output, session) {
         updateTextInput(session, "scenarioName",
                         value = paste(constr,prm,sep="_"))
         
-        # parameter list looks like:
+        # For reference, parameter list looks like:
         # list(h = input$sliderFCM_h, lambda = input$sliderFCM_lambda, k= ks,
         #      init = input$sliderFCM_init, infer_type = input$selectFCM_fn,
         #      iter = 30)
@@ -697,6 +718,28 @@ shinyServer(function(input, output, session) {
   # Run model with multiple parameters ------------------
   # -Note: Right now this is set to run different lambda values; ideally this range (as well as the parameter to sweep)
   # should be defined by the user in the GUI
+  
+  extract <- function(text) {
+    text <- gsub(" ", "", text)
+    split <- strsplit(text, ",", fixed = FALSE)[[1]]
+    as.numeric(split)
+  }
+  
+  output$sweepText <- renderText({
+    nums <- extract(input$sweepingVals)
+    if (anyNA(nums)) {
+      "Invalid input"
+    } else {
+      paste(c(input$sweepingParam,": ", paste(nums, collapse = ", ")), collapse = " ")
+    }
+  })
+  
+  varying_params <- reactive({ # Default: list(lambda = c(0.5, 1, 3, 5)) - matching input$sweepingVals specified in ui.R
+    l <- list()
+    l[[input$sweepingParam]] <- extract(input$sweepingVals)
+    return(l)
+  })
+  
   observeEvent(
     input$runFCMSweepAction,
     {
@@ -708,8 +751,8 @@ shinyServer(function(input, output, session) {
           type = "message"
         )
       } else{
-        varying_params <- list(lambda = c(0.5, 1, 3, 5))
-        param_vals <- run_params() # Get parameters from UI
+        varying_params <- isolate(varying_params())
+        param_vals <- isolate(run_params()) # Get parameters from UI
         
         # Store information in sweep_results and sweep_params (keep independent from normal runs)
         N <- prod(sapply(varying_params,length)) # calculate how many runs there will be
@@ -741,10 +784,33 @@ shinyServer(function(input, output, session) {
   # Add current run to scenario comparison view ----
   observeEvent(
     input$addScenario,{
-      scenarios$results[[input$scenarioName]] <- run$results 
-      scenarios$constraints[[input$scenarioName]] <- run$constraints_list
-      scenarios$parameters[[input$scenarioName]] <- run$parameters
-      # then add name to scenarios_to_plot
+      
+      if (is.null(model$relations)){
+        showNotification(
+          ui = "No model loaded. Please load a model before proceeding.",
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      } else if (is.null(run$results)){
+        showNotification(
+          ui = paste0("Please run the model before proceeding."),
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      } else {
+        scenarios$results[[input$scenarioName]] <- run$results 
+        scenarios$constraints[[input$scenarioName]] <- run$constraints_list
+        scenarios$parameters[[input$scenarioName]] <- run$parameters
+        
+        showNotification(
+          ui = paste0("Current run saved to scenario comparison list \n (", input$scenarioName, ")"),
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      }
     }
   )
   
@@ -768,9 +834,13 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # Save current scenarios into a file ----
   observeEvent(
     input$saveScenarios,{
-      saveRDS(scenarios, file = input$scenFileName)
+      scenarios_save <- list(results = scenarios$results, 
+                             constraints = scenarios$constraints, 
+                             parameters = scenarios$parameters)
+      saveRDS(scenarios_save, file = input$scenFileName)
       
       showNotification(
         ui = paste("File saved:", input$scenFileName),
@@ -781,6 +851,7 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # Load saved scenarios (overrides any scenarios that exist) ----
   observeEvent(
     input$scenFileToLoad,{
       scenarios_loaded <- readRDS(input$scenFileToLoad$datapath)
@@ -906,7 +977,7 @@ shinyServer(function(input, output, session) {
     if (!is.null(run$results)){
       df <- run$results
       # df$timestep <- 1:nrow(df) # now taken care of beforehand
-      df <- tidyr::pivot_longer(df, !timestep, names_to = "concept", values_to = "value")
+      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, lambda, h), names_to = "concept", values_to = "value")
       if (run$parameters$infer_type == "sigmoid-exp"){
         ylims <- c(0,1)
       } else {
@@ -944,25 +1015,81 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  # Output plot of scenario comparisons -------------------- 
+  output$sweepPlotBars <- renderPlotly({
+    if (!is.null(run$sweep_results)){
+      df <- bind_rows(run$sweep_results)
+      # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
+      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda), names_to = "concept", values_to = "value") 
+      plot <- ggplot(df %>% filter(timestep==max(timestep)), aes(x = concept, y = value, colour = concept)) + 
+        geom_col() + facet_grid(h ~ lambda, labeller = label_both) 
+      
+      gp <- ggplotly(plot) 
+      # Move the axis labels further away from plot
+      gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+      gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
+      gp %>% layout(margin = list(l = 75))
+      
+    }
+  })
+  
+  # Collate scenario comparison data for all scenarios selected  -------------------- 
   scenarioComparison <- eventReactive(
-    c(input$launchScenarioView, input$resetScenarios),{ # only evaluate when button is pressed
+    c(input$launchScenarioView, input$resetScenarios, input$startModeling),{ # only evaluate when button is pressed and/or things are reset
       if (length(input$scenariosToPlot)>0 && length(scenarios$results)>0){
         df <- bind_rows(scenarios$results[input$scenariosToPlot], .id = "scenario_name") # single brackets to preserve names
-        # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
-        df <- tidyr::pivot_longer(df, !c(timestep, scenario_name), names_to = "concept", values_to = "value") 
+        # Convert to long format (column names: scenario name, timestep, concept, value)
+        df <- tidyr::pivot_longer(df, !c(timestep, scenario_name, h, lambda, infer_type), names_to = "concept", values_to = "value") 
+        # Extract baseline only data and join it back to the relevant rows (join on timestep, concept, infer_type, params)
+        baseline <- df %>% filter(grepl("^baseline",scenario_name)) %>% # Scenario name starts with baseline
+          select(timestep, concept, baseline=value, infer_type, h, lambda) # Select relevant columns
+        joined_df <- df %>% left_join(baseline, by=c("timestep", "concept", "infer_type", "h", "lambda")) # Join original with extracted baseline
+        joined_df <- joined_df %>% 
+          mutate(difference = (value-baseline)) %>% 
+          mutate(percent_diff = difference/baseline*100) %>%
+          replace_na(list(difference = 0, percent_diff = 0))  # replace NAs with 0s so the legend colours stay the same (workaround)
+        # print(joined_df)
+        return(joined_df)
       } else {
         NULL
       }
     }
   )
   
+  # Notification when scenario data saved -------------------- 
+  observeEvent(input$saveScenarioData,{
+    saveRDS(scenarioComparison(), file = input$scenDataFileName)
+    showNotification(
+      ui = paste("File saved:", input$scenDataFileName),
+      duration = 2, 
+      closeButton = TRUE,
+      type = "message"
+    )
+  })
   
+  output$selectScenarioYVar <- renderUI({
+    selectInput("scenarioPlotY", "Y Value Plotted", 
+                choices = c("Concept value" = "value", 
+                            "Difference from baseline scenario" = "difference", 
+                            "Percentage difference from baseline" = "percent_diff"))
+  })
   
+  output$scenarioPlotWarning <- renderText({
+    if (!is.null(scenarioComparison())){
+      df <- scenarioComparison()
+      missingBaseline <- df %>% filter(is.na(baseline)) %>% select(scenario_name) %>% unique()
+      if (nrows(missingBaseline)>0){
+        paste("WARNING - Scenarios missing baseline values:", missingBaseline, collapse =  ", ")
+      } else {
+        ""
+      }
+    }
+  })
+  
+  # Output plot of scenario comparisons (line) -------------------- 
   output$scenarioPlot <- renderPlotly({
     if (!is.null(scenarioComparison())){
-      plot <- ggplot(scenarioComparison(), aes(x = timestep, y = value, colour = scenario_name)) + 
-        geom_line() + facet_wrap(vars(concept)) + 
+      plot <- ggplot(scenarioComparison(), aes_(x = ~timestep, y = as.name(input$scenarioPlotY), colour = ~scenario_name)) + 
+        geom_line(show.legend = TRUE) + facet_wrap(vars(concept)) + 
         theme(panel.spacing.y = unit(2, "lines"))
       
       gp <- ggplotly(plot) 
@@ -973,11 +1100,12 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  # Output plot of scenario comparisons (bar) -------------------- 
   output$scenarioPlotBars <- renderPlotly({
     if (!is.null(scenarioComparison())){
-      plot <- ggplot(scenarioComparison() %>% filter(timestep==max(timestep)), aes(x = scenario_name, y = value, fill = scenario_name)) + 
-        geom_col() + facet_wrap(vars(concept)) + 
-        theme(panel.spacing.y = unit(2, "lines"))
+      plot <- ggplot(scenarioComparison() %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = as.name(input$scenarioPlotY), fill = ~scenario_name)) + 
+        geom_col(show.legend = TRUE) + facet_wrap(vars(concept)) + 
+        theme(panel.spacing.y = unit(2, "lines"), axis.text.x=element_blank())
       
       gp <- ggplotly(plot) 
       # Move the axis labels further away from plot
