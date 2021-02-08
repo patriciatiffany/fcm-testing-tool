@@ -259,7 +259,14 @@ shinyUI(
                                      conditionalPanel(condition = "input.selectFCM_fn == 'linear'",
                                           br(), p("Parameter sweep not available for linear thresholding functions.")
                                      )
-                          ), # tabPanel: Parameter Sweep
+                          ), # tabPanel: Configure multiple runs
+                         tabPanel("Configure Multiple Constraints",
+                                  br(),
+                                  h4("Set multiple constrained runs"),
+                                  p("Launch multiple runs, each with a constraint added (choices override any constraints set in the sidebar)"),
+                                  uiOutput("conceptsForScenarios"),
+                                  actionButton("runFCMMultipleConstraints", "Launch runs and save to scenario list for comparison")
+                         ), # tabPanel: Parameter Sweep
                           tabPanel("Compare Scenarios",
                                    br(),
                                    h4("Scenario comparison views"),
@@ -282,8 +289,8 @@ shinyUI(
                                    fluidRow(
                                      column(6, textInput("scenFileName", label="File Name", value="saved_scenarios.Rmd"),
                                             actionButton("saveScenarios", "Save these scenarios for later")),
-                                     column(6,textInput("scenDataFileName", label="File Name", value="scenario_data.Rmd"),
-                                            actionButton("saveScenarioData", "Save the results as a data frame"))
+                                     column(6,textInput("scenDataFileName", label="File Name", value="scenario_comparison_data.Rmd"),
+                                            actionButton("saveScenarioData", "Save the comparison results as a data frame"))
                                    ), br()
                            ) # tabPanel: Compare Scenarios
                  ) # tabsetPanel

@@ -549,11 +549,11 @@ run_model <- function(model, params, constraints){
   adj_mx_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
   adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls, model$weight_vals)
   
-  if (is.null(constraints)){
-    scen <- list(var = NULL, val = NULL)
-  } else{
+  if (length(constraints)>0){
     scen <- list(var = names(constraints),
                  val = constraints)
+  } else{
+    scen <- list(var = NULL, val = NULL)
   }
   
   run <- fcm.run(adj_mx_ls$weight_num, adj_mx_ls$type, adj_mx_ls$rel_group, 

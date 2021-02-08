@@ -27,8 +27,8 @@ source('fcm.R') # model algorithm
 
 
 # Define global variables in server --------------
-weight_vals_default <- c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) # Use uniform weighting for now
-  #c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.625, H = 0.75, VH = 0.9) 
+weight_vals_default <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.625, H = 0.75, VH = 0.9) 
+#c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) # Use uniform weighting for now
 
 #c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675, H = 0.75, VH = 0.95) 
 
@@ -644,17 +644,24 @@ shinyServer(function(input, output, session) {
   })
   
   # Output: Define slider to select clamp value ------------
+  clampSliderMin <- reactive({
+    ifelse(input$selectFCM_fn == 'sigmoid-tanh',-1,0)
+  })
+  
   output$clampSlider <- renderUI({
     sliderInput(
       inputId = "scenVal", 
       label = "Clamp value", 
-      min=ifelse(input$selectFCM_fn == 'sigmoid-tanh',-1,0), max=1, step = 0.5, value = 1)
+      min=clampSliderMin(), max=1, step = 0.5, value = 1)
   })
   
   # Save constraint for FCM  ------------------
   observeEvent(
     input$addFCMConstraint,
     {
+      if (is.null(run$constraints_list)){
+        run$constraints_list <- c()
+      }
       run$constraints_list[input$scenVar] <- input$scenVal
     }
   )
@@ -671,11 +678,26 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$clearAllFCMConstraints,
     {
-      run$constraints_list <- NULL
+      run$constraints_list <- c()
     }
   )
   
   # Run model ------------------
+  scenarioNameString <- reactive({
+    if (run$parameters[["infer_type"]]=="linear"){
+      constr <- paste0("h",run$parameters[["h"]],"-linear")
+    }
+    prm <- paste0(run$parameters[["infer_type"]],"-h",run$parameters[["h"]],"-L",run$parameters[["lambda"]])
+    if (length(run$constraints_list)>0){
+      constr <- paste(paste(names(run$constraints_list),run$constraints_list,sep="="),collapse="-")
+    } else {
+      constr <- "baseline"
+    }
+    
+    return(paste(constr,prm,sep="_"))
+    
+  })
+  
   observeEvent(
     input$runFCMAction,
     {
@@ -695,17 +717,8 @@ shinyServer(function(input, output, session) {
                  lambda = run$parameters$lambda)
         
         # Change scenario name text when a new set of constraints/parameters are run
-        if (run$parameters[["infer_type"]]=="linear"){
-          constr <- paste0("h",run$parameters[["h"]],"-linear")
-        }
-        prm <- paste0(run$parameters[["infer_type"]],"-h",run$parameters[["h"]],"-L",run$parameters[["lambda"]])
-        if (length(run$constraints_list)>0){
-          constr <- paste(paste(names(run$constraints_list),run$constraints_list,sep="="),collapse="-")
-        } else {
-          constr <- "baseline"
-        }
         updateTextInput(session, "scenarioName",
-                        value = paste(constr,prm,sep="_"))
+                        value = isolate(scenarioNameString()))
         
         # For reference, parameter list looks like:
         # list(h = input$sliderFCM_h, lambda = input$sliderFCM_lambda, k= ks,
@@ -779,6 +792,82 @@ shinyServer(function(input, output, session) {
       }
     }
   )
+  
+  # Define UI element to select concepts to constrain for set of runs -----
+  output$conceptsForScenarios <- renderUI({
+    selectizeInput(
+      inputId = "conceptsForScenarios",
+      label = "Test high/low scenarios for these concepts",
+      choices = sort(model$concepts$concept_id),
+      multiple = TRUE
+    )
+  })
+  
+  observeEvent(
+    input$runFCMMultipleConstraints,     {
+      if (is.null(model$relations)){
+        showNotification(
+          ui = "No model loaded. Please load a model before proceeding.",
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      } else{
+        conceptsToConstrain <- isolate(input$conceptsForScenarios)
+        # Create new list that will contain all runs (high and low for each concept selected)
+        clampRunResults <- vector("list",  length(conceptsToConstrain) * 2) 
+        for (cn in conceptsToConstrain){
+          run$constraints_list <- c()
+          run$parameters <- run_params()
+          
+          # Baseline
+          run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
+            mutate(timestep = seq.int(run$parameters$iter),
+                   infer_type = run$parameters$infer_type,
+                   h = run$parameters$h,
+                   lambda = run$parameters$lambda)
+          
+          scenarios$results[[isolate(scenarioNameString())]] <- run$results 
+          scenarios$constraints[[isolate(scenarioNameString())]] <- "none"
+          scenarios$parameters[[isolate(scenarioNameString())]] <- run$parameters
+          
+          # Low scenario
+          run$constraints_list[cn] <- clampSliderMin()
+
+          run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
+            mutate(timestep = seq.int(run$parameters$iter),
+                   infer_type = run$parameters$infer_type,
+                   h = run$parameters$h,
+                   lambda = run$parameters$lambda)
+          
+          scenarios$results[[isolate(scenarioNameString())]] <- run$results 
+          scenarios$constraints[[isolate(scenarioNameString())]] <- run$constraints_list
+          scenarios$parameters[[isolate(scenarioNameString())]] <- run$parameters
+          
+          # High scenario
+          run$constraints_list[cn] <- 1
+          
+          run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
+            mutate(timestep = seq.int(run$parameters$iter),
+                   infer_type = run$parameters$infer_type,
+                   h = run$parameters$h,
+                   lambda = run$parameters$lambda)
+          
+          scenarios$results[[isolate(scenarioNameString())]] <- run$results 
+          scenarios$constraints[[isolate(scenarioNameString())]] <- run$constraints_list
+          scenarios$parameters[[isolate(scenarioNameString())]] <- run$parameters
+          
+        }
+        showNotification(
+          ui = paste0("Set of runs (high/ low for each concept) saved to scenario comparison list"),
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+        run$constraints_list <- c() # clear constraints again
+      }
+    })
+  
   # === SCENARIO SAVE/ LAUNCH COMPARISON VIEW --------- ====================================================
   
   # Add current run to scenario comparison view ----
@@ -801,7 +890,11 @@ shinyServer(function(input, output, session) {
         )
       } else {
         scenarios$results[[input$scenarioName]] <- run$results 
-        scenarios$constraints[[input$scenarioName]] <- run$constraints_list
+        if (length(run$constraints_list)>0){
+          scenarios$constraints[[input$scenarioName]] <- c(run$constraints_list)
+        } else {
+          scenarios$constraints[[input$scenarioName]] <- "none"
+        }
         scenarios$parameters[[input$scenarioName]] <- run$parameters
         
         showNotification(
@@ -958,10 +1051,10 @@ shinyServer(function(input, output, session) {
   
   # Output table displaying values constrained -------------------- 
   output$constraintsTable <- renderTable(
-    if (is.null(run$constraints_list)){
-      data.frame(Variable = c(), Value = c())
-    } else{
+    if (length(run$constraints_list)>0){
       data.frame(Variable = names(run$constraints_list), Value = run$constraints_list)
+    } else{
+      data.frame(Variable = c(), Value = c())
     }
   )
   
@@ -1045,7 +1138,7 @@ shinyServer(function(input, output, session) {
         joined_df <- df %>% left_join(baseline, by=c("timestep", "concept", "infer_type", "h", "lambda")) # Join original with extracted baseline
         joined_df <- joined_df %>% 
           mutate(difference = (value-baseline)) %>% 
-          mutate(percent_diff = difference/baseline*100) %>%
+          mutate(percent_diff = difference/abs(baseline)*100) %>%
           replace_na(list(difference = 0, percent_diff = 0))  # replace NAs with 0s so the legend colours stay the same (workaround)
         # print(joined_df)
         return(joined_df)
@@ -1055,7 +1148,7 @@ shinyServer(function(input, output, session) {
     }
   )
   
-  # Notification when scenario data saved -------------------- 
+  # Notification when scenario comparison data saved -------------------- 
   observeEvent(input$saveScenarioData,{
     saveRDS(scenarioComparison(), file = input$scenDataFileName)
     showNotification(
@@ -1077,7 +1170,7 @@ shinyServer(function(input, output, session) {
     if (!is.null(scenarioComparison())){
       df <- scenarioComparison()
       missingBaseline <- df %>% filter(is.na(baseline)) %>% select(scenario_name) %>% unique()
-      if (nrows(missingBaseline)>0){
+      if (nrow(missingBaseline)>0){
         paste("WARNING - Scenarios missing baseline values:", missingBaseline, collapse =  ", ")
       } else {
         ""
