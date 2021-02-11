@@ -187,14 +187,14 @@ shinyUI(
                      tabPanel("Set Parameters",
                               hr(),
                               selectInput("selectFCM_fn", label = "FCM thresholding function",
-                                          choices = c("Sigmoid (Logistic)"="sigmoid-exp","Sigmoid (Tanh)"="sigmoid-tanh","Linear (f(x) = x)"="linear"), selected="sigmoid-exp"),
+                                          choices = c("Sigmoid (Logistic)"="sigmoid-exp","Sigmoid (Tanh)"="sigmoid-tanh","Linear (f(x) = x-h)"="linear"), selected="sigmoid-exp"),
                               plotOutput("FCMFunction", height = "250px"),
+                              sliderInput("sliderFCM_h", "Choose h", min=-1, max=1, step = 0.25, value = 0), 
+                              uiOutput("initSlider"),
                               conditionalPanel(
                                 condition = "input.selectFCM_fn != 'linear'",
-                                sliderInput("sliderFCM_h", "Choose h", min=-0.5, max=0.5, step = 0.5, value = 0),
-                                sliderInput("sliderFCM_lambda", "Choose lambda", min=0, max=10, step = 0.5, value = 3)
-                              ),     
-                              sliderInput("sliderFCM_init", "Choose initial values for unconstrained concepts", min=0, max=1, step = 0.5, value = 1)
+                                sliderInput("sliderFCM_lambda", "Choose lambda", min=0, max=10, step = 0.25, value = 3)
+                              )
                      ),
                      tabPanel("Add Constraints",
                               hr(),
@@ -241,24 +241,25 @@ shinyUI(
                             tabPanel("Configure Multiple Runs",
                                      br(),
                                      h4("Parameter Sweep"),
-                                     conditionalPanel(condition = "input.selectFCM_fn != 'linear'",
-                                          p("Launch multiple runs (parameter sweep will override selected value(s) in the sidebar)"),
-                                          selectInput("sweepingParam", label = "Parameter to sweep", choices = c("lambda","h")),
-                                          textInput("sweepingVals", "Values", placeholder = "Enter values separated by a comma...", value="0.5, 1, 3, 5"),
-                                          textOutput("sweepText"),
-                                          br(),
-                                          actionButton("runFCMSweepAction", "Run parameter sweep"),
-                                          hr(),
-                                          DT::dataTableOutput("sweepEquilTable"),
-                                          hr(),
-                                          fluidRow(
-                                            plotlyOutput(outputId = "sweepPlot")
-                                          ),
-                                          plotlyOutput(outputId = "sweepPlotBars")
-                                     ),
-                                     conditionalPanel(condition = "input.selectFCM_fn == 'linear'",
-                                          br(), p("Parameter sweep not available for linear thresholding functions.")
-                                     )
+                                      p("Launch multiple runs (parameter sweep will override selected value(s) in the sidebar)"),
+                                      uiOutput("sweepParam"),
+                                      textInput("sweepingVals", "Values", placeholder = "Enter values separated by a comma...", value="0.5, 1, 3, 5"),
+                                      textOutput("sweepText"),
+                                      br(),
+                                      fluidRow(
+                                        column(6,actionButton("runFCMSweepAction", "Run parameter sweep")),
+                                        column(6, actionButton("addSweep", "Add runs to scenario comparison view"))
+                                      ),
+                                      hr(),
+                                      DT::dataTableOutput("sweepEquilTable"),
+                                      hr(),
+                                      fluidRow(
+                                        plotlyOutput(outputId = "sweepPlot")
+                                      ),
+                                      br(),
+                                      fluidRow(
+                                        plotlyOutput(outputId = "sweepPlotBars")
+                                      )
                           ), # tabPanel: Configure multiple runs
                          tabPanel("Configure Multiple Constraints",
                                   br(),

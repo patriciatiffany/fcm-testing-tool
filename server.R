@@ -142,6 +142,7 @@ shinyServer(function(input, output, session) {
     run$constraints_list <- NULL
     run$sweep_params <- NULL
     run$sweep_results <- NULL
+    run$sweep_constraints <- NULL
     scenarios$results <- NULL
     scenarios$constraints <- NULL
     scenarios$parameters <- NULL
@@ -153,6 +154,7 @@ shinyServer(function(input, output, session) {
     run$constraints_list <- NULL
     run$sweep_params <- NULL
     run$sweep_results <- NULL
+    run$sweep_constraints <- NULL
     updateTextInput(session, "scenarioName", value = "")
   }
   
@@ -634,6 +636,11 @@ shinyServer(function(input, output, session) {
          iter = input$numIterations)
   })
   
+  # Output: Define slider to select initial starting values --------
+  output$initSlider <- renderUI({
+    sliderInput("sliderFCM_init", "Choose initial values for unconstrained concepts", min=clampSliderMin(), max=1, step = 0.25, value = 1)
+  })
+  
   # Output: Define dropdown element to select concept for constraining / clamping --------------
   output$selectScenVar <- renderUI({
     selectInput(
@@ -683,21 +690,6 @@ shinyServer(function(input, output, session) {
   )
   
   # Run model ------------------
-  scenarioNameString <- reactive({
-    if (run$parameters[["infer_type"]]=="linear"){
-      constr <- paste0("h",run$parameters[["h"]],"-linear")
-    }
-    prm <- paste0(run$parameters[["infer_type"]],"-h",run$parameters[["h"]],"-L",run$parameters[["lambda"]])
-    if (length(run$constraints_list)>0){
-      constr <- paste(paste(names(run$constraints_list),run$constraints_list,sep="="),collapse="-")
-    } else {
-      constr <- "baseline"
-    }
-    
-    return(paste(constr,prm,sep="_"))
-    
-  })
-  
   observeEvent(
     input$runFCMAction,
     {
@@ -710,15 +702,11 @@ shinyServer(function(input, output, session) {
         )
       } else{
         run$parameters <- run_params()
-        run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
-          mutate(timestep = seq.int(run$parameters$iter),
-                 infer_type = run$parameters$infer_type,
-                 h = run$parameters$h,
-                 lambda = run$parameters$lambda)
+        run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
         
         # Change scenario name text when a new set of constraints/parameters are run
         updateTextInput(session, "scenarioName",
-                        value = isolate(scenarioNameString()))
+                        value = isolate(scenarioNameString(run$parameters, run$constraints_list)))
         
         # For reference, parameter list looks like:
         # list(h = input$sliderFCM_h, lambda = input$sliderFCM_lambda, k= ks,
@@ -729,8 +717,7 @@ shinyServer(function(input, output, session) {
   )
   
   # Run model with multiple parameters ------------------
-  # -Note: Right now this is set to run different lambda values; ideally this range (as well as the parameter to sweep)
-  # should be defined by the user in the GUI
+  # -Note: Right now this is set to run one set of parameter values-- eventually could do combinations of parameters, perhaps
   
   extract <- function(text) {
     text <- gsub(" ", "", text)
@@ -753,6 +740,15 @@ shinyServer(function(input, output, session) {
     return(l)
   })
   
+  output$sweepParam <-  renderUI({
+    if (input$selectFCM_fn == "linear"){
+      param_choices <- c("h", "init")
+    } else {
+      param_choices <- c("lambda","h", "init")
+    }
+    selectInput("sweepingParam", label = "Parameter to sweep", choices = param_choices)
+  })
+  
   observeEvent(
     input$runFCMSweepAction,
     {
@@ -771,6 +767,7 @@ shinyServer(function(input, output, session) {
         N <- prod(sapply(varying_params,length)) # calculate how many runs there will be
         run$sweep_params <- vector("list",  N) # create new list that will contain all runs (permutations) of sweeps
         run$sweep_results <- vector("list",  N)
+        run$sweep_constraints <- run$constraints_list
         
         n <- 1
         for (p in 1:length(varying_params)){
@@ -779,11 +776,7 @@ shinyServer(function(input, output, session) {
           # run$parameters[pn] = "multiple"
           for (i in 1:length(pvals)){
             params_run = replace(param_vals, pn, pvals[i]) # store all parameters here, using the value in the parameter sweep
-            res <- run_model(model, params_run, run$constraints_list) %>% 
-              mutate(infer_type = params_run$infer_type,
-                     h = params_run$h,
-                     lambda = params_run$lambda, 
-                     timestep = seq.int(params_run$iter))
+            res <- run_model(model, params_run, run$sweep_constraints, encode = TRUE)
             run$sweep_params[[n]] <- params_run
             run$sweep_results[[n]] <- res
             n <- n + 1
@@ -803,6 +796,8 @@ shinyServer(function(input, output, session) {
     )
   })
   
+  # Run model with multiple constraints -----------
+  
   observeEvent(
     input$runFCMMultipleConstraints,     {
       if (is.null(model$relations)){
@@ -821,41 +816,31 @@ shinyServer(function(input, output, session) {
           run$parameters <- run_params()
           
           # Baseline
-          run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
-            mutate(timestep = seq.int(run$parameters$iter),
-                   infer_type = run$parameters$infer_type,
-                   h = run$parameters$h,
-                   lambda = run$parameters$lambda)
+          run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
+          scenName <- isolate(scenarioNameString(run$parameters, run$constraints_list))
           
-          scenarios$results[[isolate(scenarioNameString())]] <- run$results 
-          scenarios$constraints[[isolate(scenarioNameString())]] <- "none"
-          scenarios$parameters[[isolate(scenarioNameString())]] <- run$parameters
+          scenarios$results[[scenName]] <- run$results 
+          scenarios$constraints[[scenName]] <- "none"
+          scenarios$parameters[[scenName]] <- run$parameters
           
           # Low scenario
           run$constraints_list[cn] <- clampSliderMin()
-
-          run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
-            mutate(timestep = seq.int(run$parameters$iter),
-                   infer_type = run$parameters$infer_type,
-                   h = run$parameters$h,
-                   lambda = run$parameters$lambda)
+          run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
+          scenName <- isolate(scenarioNameString(run$parameters, run$constraints_list))
           
-          scenarios$results[[isolate(scenarioNameString())]] <- run$results 
-          scenarios$constraints[[isolate(scenarioNameString())]] <- run$constraints_list
-          scenarios$parameters[[isolate(scenarioNameString())]] <- run$parameters
+          scenarios$results[[scenName]] <- run$results 
+          scenarios$constraints[[scenName]] <- run$constraints_list
+          scenarios$parameters[[scenName]] <- run$parameters
           
           # High scenario
           run$constraints_list[cn] <- 1
           
-          run$results <- run_model(model, run$parameters, run$constraints_list) %>% 
-            mutate(timestep = seq.int(run$parameters$iter),
-                   infer_type = run$parameters$infer_type,
-                   h = run$parameters$h,
-                   lambda = run$parameters$lambda)
+          run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
+          scenName <- isolate(scenarioNameString(run$parameters, run$constraints_list))
           
-          scenarios$results[[isolate(scenarioNameString())]] <- run$results 
-          scenarios$constraints[[isolate(scenarioNameString())]] <- run$constraints_list
-          scenarios$parameters[[isolate(scenarioNameString())]] <- run$parameters
+          scenarios$results[[scenName]] <- run$results 
+          scenarios$constraints[[scenName]] <- run$constraints_list
+          scenarios$parameters[[scenName]] <- run$parameters
           
         }
         showNotification(
@@ -899,6 +884,48 @@ shinyServer(function(input, output, session) {
         
         showNotification(
           ui = paste0("Current run saved to scenario comparison list \n (", input$scenarioName, ")"),
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      }
+    }
+  )
+  
+  # Add current parameter sweep runs to scenario comparison view ----
+  observeEvent(
+    input$addSweep,{
+      if (is.null(model$relations)){
+        showNotification(
+          ui = "No model loaded. Please load a model before proceeding.",
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      } else if (is.null(run$sweep_results)){
+        showNotification(
+          ui = paste0("Please run before proceeding."),
+          duration = 2, 
+          closeButton = TRUE,
+          type = "message"
+        )
+      } else {
+        
+        if (length(run$sweep_constraints)>0){
+          constraints <- c(run$constraints_list)
+        } else {
+          constraints <- "none"
+        }
+        
+        # Loop over all parameters run/ saved
+        for (i in 1:length(run$sweep_params)){
+          scenName <- scenarioNameString(run$sweep_params[[i]], run$sweep_constraints)
+          scenarios$results[[scenName]] <- run$sweep_results[[i]]
+          scenarios$constraints[[scenName]] <- constraints
+          scenarios$parameters[[scenName]] <- run$parameters
+        }
+        showNotification(
+          ui = paste0("Runs saved to scenario comparison list"),
           duration = 2, 
           closeButton = TRUE,
           type = "message"
@@ -1031,7 +1058,7 @@ shinyServer(function(input, output, session) {
     switch(input$selectFCM_fn,
            "sigmoid-exp" =  curve(1/(1 + exp(-lambda * (x - h))), from = -1, to = 1, ylim = c(0,1)),
            "sigmoid-tanh" = curve(tanh(lambda * (x - h)), from = -1, to = 1, ylim = c(-1,1)),
-           "linear" = curve((x), from = -1, to = 1, ylim = c(-1,1))
+           "linear" = curve((x - h), from = -1, to = 1, ylim = c(-1,1))
     )
   })
   
@@ -1060,7 +1087,7 @@ shinyServer(function(input, output, session) {
   
   # Output table of model run/ simulation results  -------------------- 
   output$resultsTable <- DT:: renderDataTable(
-    run$results,
+    if(!is.null(run$results)){run$results %>% select(-c("init","lambda","h","infer_type"))} else {run$results},
     server = FALSE,
     options = list(dom='tp', pageLength = 15)
   )
@@ -1095,15 +1122,15 @@ shinyServer(function(input, output, session) {
     if (!is.null(run$sweep_results)){
       df <- bind_rows(run$sweep_results)
       # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
-      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda), names_to = "concept", values_to = "value") 
-      plot <- ggplot(df, aes(x = timestep, y = value, colour = concept)) + 
-        geom_line() + facet_grid(h ~ lambda, labeller = label_both) 
+      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda, init), names_to = "concept", values_to = "value") 
+      plot <- ggplot(df, aes(x = timestep, y = value, colour = concept)) + theme_minimal() + 
+        geom_line() + facet_wrap(facets=c(isolate(input$sweepingParam)), labeller = label_both) #facet_grid(h ~ lambda, labeller = label_both) 
       
       gp <- ggplotly(plot) 
       # Move the axis labels further away from plot
       gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
       gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-      gp %>% layout(margin = list(l = 75))
+      gp %>% layout(margin = list(l = 75, b = 75))
       
     }
   })
@@ -1112,15 +1139,15 @@ shinyServer(function(input, output, session) {
     if (!is.null(run$sweep_results)){
       df <- bind_rows(run$sweep_results)
       # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
-      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda), names_to = "concept", values_to = "value") 
-      plot <- ggplot(df %>% filter(timestep==max(timestep)), aes(x = concept, y = value, colour = concept)) + 
-        geom_col() + facet_grid(h ~ lambda, labeller = label_both) 
+      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda, init), names_to = "concept", values_to = "value") 
+      plot <- ggplot(df %>% filter(timestep==max(timestep)), aes(x = concept, y = value, colour = concept)) + theme_minimal() + 
+        geom_col() + facet_wrap(facets=c(isolate(input$sweepingParam)), labeller = label_both) #facet_grid(h ~ lambda, labeller = label_both) 
       
       gp <- ggplotly(plot) 
       # Move the axis labels further away from plot
       gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
       gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-      gp %>% layout(margin = list(l = 75))
+      gp %>% layout(margin = list(l = 75, b = 75))
       
     }
   })
@@ -1131,11 +1158,11 @@ shinyServer(function(input, output, session) {
       if (length(input$scenariosToPlot)>0 && length(scenarios$results)>0){
         df <- bind_rows(scenarios$results[input$scenariosToPlot], .id = "scenario_name") # single brackets to preserve names
         # Convert to long format (column names: scenario name, timestep, concept, value)
-        df <- tidyr::pivot_longer(df, !c(timestep, scenario_name, h, lambda, infer_type), names_to = "concept", values_to = "value") 
+        df <- tidyr::pivot_longer(df, !c(timestep, scenario_name, h, lambda, infer_type, init), names_to = "concept", values_to = "value") 
         # Extract baseline only data and join it back to the relevant rows (join on timestep, concept, infer_type, params)
         baseline <- df %>% filter(grepl("^baseline",scenario_name)) %>% # Scenario name starts with baseline
-          select(timestep, concept, baseline=value, infer_type, h, lambda) # Select relevant columns
-        joined_df <- df %>% left_join(baseline, by=c("timestep", "concept", "infer_type", "h", "lambda")) # Join original with extracted baseline
+          select(timestep, concept, baseline=value, infer_type, h, lambda, init) # Select relevant columns
+        joined_df <- df %>% left_join(baseline, by=c("timestep", "concept", "infer_type", "h", "lambda", "init")) # Join original with extracted baseline
         joined_df <- joined_df %>% 
           mutate(difference = (value-baseline)) %>% 
           mutate(percent_diff = difference/abs(baseline)*100) %>%
@@ -1183,7 +1210,7 @@ shinyServer(function(input, output, session) {
     if (!is.null(scenarioComparison())){
       plot <- ggplot(scenarioComparison(), aes_(x = ~timestep, y = as.name(input$scenarioPlotY), colour = ~scenario_name)) + 
         geom_line(show.legend = TRUE) + facet_wrap(vars(concept)) + 
-        theme(panel.spacing.y = unit(2, "lines"))
+        theme(panel.spacing.y = unit(2, "lines")) + theme_minimal()
       
       gp <- ggplotly(plot) 
       # Move the axis labels further away from plot
@@ -1198,11 +1225,14 @@ shinyServer(function(input, output, session) {
     if (!is.null(scenarioComparison())){
       plot <- ggplot(scenarioComparison() %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = as.name(input$scenarioPlotY), fill = ~scenario_name)) + 
         geom_col(show.legend = TRUE) + facet_wrap(vars(concept)) + 
-        theme(panel.spacing.y = unit(2, "lines"), axis.text.x=element_blank())
+        theme(panel.spacing.y = unit(2, "lines")) + 
+        theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) + theme_minimal() + 
+        geom_hline(yintercept = 0, color = "black")
       
       gp <- ggplotly(plot) 
       # Move the axis labels further away from plot
-      gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+      # gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
       gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
       gp %>% layout(margin = list(l = 75, b= 100))
     }

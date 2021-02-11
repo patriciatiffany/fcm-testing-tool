@@ -543,7 +543,7 @@ makeDot <-
 #---------------#
 # Run simulation
 #---------------#
-run_model <- function(model, params, constraints){
+run_model <- function(model, params, constraints, encode=FALSE){
   Relations_ls <- model$relations
   Cn <- model$concepts$concept_id
   adj_mx_ls <- makeAdjacencyMatrix(Relations_ls, Cn)
@@ -559,16 +559,36 @@ run_model <- function(model, params, constraints){
   run <- fcm.run(adj_mx_ls$weight_num, adj_mx_ls$type, adj_mx_ls$rel_group, 
                  cn = Cn, iter = params$iter, k = params$k, init = params$init, 
                  infer_type = params$infer_type, h = params$h, lambda = params$lambda,
-                 set.concepts = scen$var, set.values = scen$val) #%>% 
-    # mutate(scenario=scen$name, 
-    #        infer_type=infer_type,
-    #        h = h,
-    #        lambda = lambda,
-    #        model = m)
+                 set.concepts = scen$var, set.values = scen$val)
+  
+  if (encode){ # Do we want to appent parameter info in the data frame?
+    run <- run %>% 
+      mutate(infer_type = params$infer_type,
+             h = params$h,
+             lambda = params$lambda,
+             init = params$init,
+             timestep = seq.int(params$iter))
+  }
   return(run)
 }
 
-
+#---------------#
+# Create string from current parameters and constraints
+#---------------#
+scenarioNameString <- function(params, constraints_list){
+  if (params[["infer_type"]]=="linear"){
+    constr <- paste0("h",params[["h"]],"-linear","-init",params[["init"]])
+  }
+  prm <- paste0(params[["infer_type"]],"-h",params[["h"]],"-L",params[["lambda"]],"-i",params[["init"]])
+  if (length(constraints_list)>0){
+    constr <- paste(paste(names(constraints_list),constraints_list,sep="="),collapse="-")
+  } else {
+    constr <- "baseline"
+  }
+  
+  return(paste(constr,prm,sep="_"))
+  
+}
 
 #--------------------------------------------------------#
 # Rescaling a Value from an Input Range to an Output Range
