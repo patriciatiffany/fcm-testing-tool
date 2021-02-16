@@ -55,7 +55,7 @@ shinyServer(function(input, output, session) {
       description = "")
   
   # Reactive object to store the settings for the current model simulation/run
-  run <- reactiveValues(results = NULL, parameters= NULL, constraints_list = NULL, sweep_params = NULL, sweep_results = NULL)
+  run <- reactiveValues(results = NULL, parameters= NULL, constraints = NULL, sweep_params = NULL, sweep_results = NULL)
 
   # Create a reactive object to store scenario data in
   scenarios <- reactiveValues(results = NULL, constraints = NULL, parameters = NULL)
@@ -139,7 +139,7 @@ shinyServer(function(input, output, session) {
     selectedfx$description <- ""
     run$results <- NULL
     run$parameters <- NULL
-    run$constraints_list <- NULL
+    run$constraints <- NULL
     run$sweep_params <- NULL
     run$sweep_results <- NULL
     run$sweep_constraints <- NULL
@@ -151,7 +151,7 @@ shinyServer(function(input, output, session) {
   resetRun <- function(){
     run$results <- NULL
     run$parameters <- NULL
-    run$constraints_list <- NULL
+    run$constraints <- NULL
     run$sweep_params <- NULL
     run$sweep_results <- NULL
     run$sweep_constraints <- NULL
@@ -666,10 +666,10 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$addFCMConstraint,
     {
-      if (is.null(run$constraints_list)){
-        run$constraints_list <- c()
+      if (is.null(run$constraints)){
+        run$constraints <- c()
       }
-      run$constraints_list[input$scenVar] <- input$scenVal
+      run$constraints[input$scenVar] <- input$scenVal
     }
   )
   
@@ -677,7 +677,7 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$deleteFCMConstraint,
     {
-      run$constraints_list <- run$constraints_list[which(names(run$constraints_list)!=input$scenVar)]
+      run$constraints <- run$constraints[which(names(run$constraints)!=input$scenVar)]
     }
   )
   
@@ -685,7 +685,7 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$clearAllFCMConstraints,
     {
-      run$constraints_list <- c()
+      run$constraints <- c()
     }
   )
   
@@ -702,11 +702,11 @@ shinyServer(function(input, output, session) {
         )
       } else{
         run$parameters <- run_params()
-        run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
+        run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
         
         # Change scenario name text when a new set of constraints/parameters are run
         updateTextInput(session, "scenarioName",
-                        value = isolate(scenarioNameString(run$parameters, run$constraints_list)))
+                        value = isolate(scenarioNameString(run$parameters, run$constraints)))
         
         # For reference, parameter list looks like:
         # list(h = input$sliderFCM_h, lambda = input$sliderFCM_lambda, k= ks,
@@ -767,7 +767,7 @@ shinyServer(function(input, output, session) {
         N <- prod(sapply(varying_params,length)) # calculate how many runs there will be
         run$sweep_params <- vector("list",  N) # create new list that will contain all runs (permutations) of sweeps
         run$sweep_results <- vector("list",  N)
-        run$sweep_constraints <- run$constraints_list
+        run$sweep_constraints <- run$constraints
         
         n <- 1
         for (p in 1:length(varying_params)){
@@ -812,34 +812,34 @@ shinyServer(function(input, output, session) {
         # Create new list that will contain all runs (high and low for each concept selected)
         clampRunResults <- vector("list",  length(conceptsToConstrain) * 2) 
         for (cn in conceptsToConstrain){
-          run$constraints_list <- c()
+          run$constraints <- c()
           run$parameters <- run_params()
           
           # Baseline
-          run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
-          scenName <- isolate(scenarioNameString(run$parameters, run$constraints_list))
+          run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
+          scenName <- isolate(scenarioNameString(run$parameters, run$constraints))
           
           scenarios$results[[scenName]] <- run$results 
           scenarios$constraints[[scenName]] <- "none"
           scenarios$parameters[[scenName]] <- run$parameters
           
           # Low scenario
-          run$constraints_list[cn] <- clampSliderMin()
-          run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
-          scenName <- isolate(scenarioNameString(run$parameters, run$constraints_list))
+          run$constraints[cn] <- clampSliderMin()
+          run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
+          scenName <- isolate(scenarioNameString(run$parameters, run$constraints))
           
           scenarios$results[[scenName]] <- run$results 
-          scenarios$constraints[[scenName]] <- run$constraints_list
+          scenarios$constraints[[scenName]] <- run$constraints
           scenarios$parameters[[scenName]] <- run$parameters
           
           # High scenario
-          run$constraints_list[cn] <- 1
+          run$constraints[cn] <- 1
           
-          run$results <- run_model(model, run$parameters, run$constraints_list, encode = TRUE)
-          scenName <- isolate(scenarioNameString(run$parameters, run$constraints_list))
+          run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
+          scenName <- isolate(scenarioNameString(run$parameters, run$constraints))
           
           scenarios$results[[scenName]] <- run$results 
-          scenarios$constraints[[scenName]] <- run$constraints_list
+          scenarios$constraints[[scenName]] <- run$constraints
           scenarios$parameters[[scenName]] <- run$parameters
           
         }
@@ -849,7 +849,7 @@ shinyServer(function(input, output, session) {
           closeButton = TRUE,
           type = "message"
         )
-        run$constraints_list <- c() # clear constraints again
+        run$constraints <- c() # clear constraints again
       }
     })
   
@@ -875,8 +875,8 @@ shinyServer(function(input, output, session) {
         )
       } else {
         scenarios$results[[input$scenarioName]] <- run$results 
-        if (length(run$constraints_list)>0){
-          scenarios$constraints[[input$scenarioName]] <- c(run$constraints_list)
+        if (length(run$constraints)>0){
+          scenarios$constraints[[input$scenarioName]] <- c(run$constraints)
         } else {
           scenarios$constraints[[input$scenarioName]] <- "none"
         }
@@ -912,7 +912,7 @@ shinyServer(function(input, output, session) {
       } else {
         
         if (length(run$sweep_constraints)>0){
-          constraints <- c(run$constraints_list)
+          constraints <- c(run$constraints)
         } else {
           constraints <- "none"
         }
@@ -1078,8 +1078,8 @@ shinyServer(function(input, output, session) {
   
   # Output table displaying values constrained -------------------- 
   output$constraintsTable <- renderTable(
-    if (length(run$constraints_list)>0){
-      data.frame(Variable = names(run$constraints_list), Value = run$constraints_list)
+    if (length(run$constraints)>0){
+      data.frame(Variable = names(run$constraints), Value = run$constraints)
     } else{
       data.frame(Variable = c(), Value = c())
     }
@@ -1209,8 +1209,8 @@ shinyServer(function(input, output, session) {
   output$scenarioPlot <- renderPlotly({
     if (!is.null(scenarioComparison())){
       plot <- ggplot(scenarioComparison(), aes_(x = ~timestep, y = as.name(input$scenarioPlotY), colour = ~scenario_name)) + 
-        geom_line(show.legend = TRUE) + facet_wrap(vars(concept)) + 
-        theme(panel.spacing.y = unit(2, "lines")) + theme_minimal()
+        geom_line(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
+        theme(panel.spacing.y = unit(2, "lines")) 
       
       gp <- ggplotly(plot) 
       # Move the axis labels further away from plot
@@ -1224,10 +1224,10 @@ shinyServer(function(input, output, session) {
   output$scenarioPlotBars <- renderPlotly({
     if (!is.null(scenarioComparison())){
       plot <- ggplot(scenarioComparison() %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = as.name(input$scenarioPlotY), fill = ~scenario_name)) + 
-        geom_col(show.legend = TRUE) + facet_wrap(vars(concept)) + 
+        geom_col(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
         theme(panel.spacing.y = unit(2, "lines")) + 
         theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
-              axis.ticks.x=element_blank()) + theme_minimal() + 
+              axis.ticks.x=element_blank()) + 
         geom_hline(yintercept = 0, color = "black")
       
       gp <- ggplotly(plot) 
