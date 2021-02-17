@@ -1,40 +1,42 @@
-#server.R
-# Author: Patricia Angkiriwang, University of British Columbia
-# based on code by Brian Gregor, Oregon Systems Analytics LLC
+# server.R
+# Author: Patricia Angkiriwang, University of British Columbia - 2019-2021
+# with code initially adapted from open-source R Shiny app by Brian Gregor, Oregon Systems Analytics LLC
 
-# NOTES ON DATA FORMAT:
-# A model is a list of 2
+## NOTES ON DATA FORMAT:
+# > model: A model is a list of 2
 # model$concepts: a data frame with columns (chr/string) - name, variable, description, values, group 
 # model$relations: a list of [# of concepts with incoming links], each a list of 2
 #   concept_name: (chr - name of affected variable)
 #   affected_by: (list of[#things that affect it])
 
 
+# Running t
+
+## NOTES ON THIS VERSION:
+# (2021/02) This version of the model does not use min/max values (commented out)
+
 # Load packages and necessary scripts ---------------
 library(shiny) 
 library(shinyBS) # bootstrap for formatting
 library(plotly) # for interactive plots
 library(DT) # data tables
-library(grid)
+library(grid) # arranging multiple plots (unused?)
 library(jsonlite) # for reading in/out data
-library(dplyr) 
-library(ggplot2)
-library(tidyr)
+library(dplyr) # for data wrangling
+library(ggplot2) # plots
+library(tidyr) # tidying data
 library(DiagrammeR) # for visualizing graph
 source("helper.R") # load helper.R script (contains necessary functions)
-source('fcm.R') # model algorithm
+source('fcm.R') # load model algorithm
 # source('../../bcfn_seafood_access_modelling/fcm.R')
-
-
-# Define global variables in server --------------
-weight_vals_default <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.625, H = 0.75, VH = 0.9) 
-#c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) # Use uniform weighting for now
-
-#c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.675, H = 0.75, VH = 0.95) 
-
 
 # SHINY SERVER FUNCTION
 shinyServer(function(input, output, session) {
+  
+  # Define some settings and global variables here --------------
+  weight_vals_default <- c(VL = 0.1, L = 0.25, ML = 0.375, M = 0.5, MH = 0.625, H = 0.75, VH = 0.9) 
+  #c(VL = 1, L = 1, ML = 1, M = 1, MH = 1, H = 1, VH = 1) 
+  
   
   # === CREATE OBJECTS TO STORE MODEL, ETC. ------ ==================
   # Reactive object to store current state that interface responds to
@@ -197,9 +199,6 @@ shinyServer(function(input, output, session) {
         startmessage <- "Model loaded from /models folder"
         
       } # end if input$modelAction 
-      closeAlert(session,alertId = "nofile")
-      closeAlert(session,alertId = "noname")
-      closeAlert(session,alertId = "duplicate")
       
       showNotification(
         ui = startmessage,
@@ -207,7 +206,6 @@ shinyServer(function(input, output, session) {
         closeButton = TRUE,
         type = "message"
       )
-      
       
       updateConceptForm(1)
       updateRelationForm(1)
@@ -1019,7 +1017,7 @@ shinyServer(function(input, output, session) {
   # Output display of numerical equivalents of weights in model -------------------- 
   output$weightsTable <- renderTable({
     data.frame("Qualitative weight" = names(model$weight_vals),
-               "Numerical value" = model$weight_vals, check.names = FALSE)
+               "Numerical value" = as.character(model$weight_vals), check.names = FALSE) # use as.character to display decimal points correctly
   })
   
   # Output relations graph  -------------------- 
