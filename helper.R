@@ -21,7 +21,7 @@
 #' @return a list containing values for name, parent, created, and lastedit.
 #' @export
 loadModelStatus <- function(modelName, authorName = NULL){
-  dir <-  file.path("./models", modelName)
+  dir <-  file.path("models", modelName)
   status_ls <- as.list(fromJSON(file.path(dir, "status.json")))
   if (!is.null(authorName)) {
     attribution <- 
@@ -47,7 +47,7 @@ loadModelStatus <- function(modelName, authorName = NULL){
 #' @return a data frame containing the model concept information.
 #' @export
 loadModelConcepts <- function(modelName){
-  dir <-  file.path("./models", modelName)
+  dir <-  file.path("models", modelName)
   fromJSON(file.path(dir, "concepts.json"))
 }
 
@@ -66,7 +66,7 @@ loadModelConcepts <- function(modelName){
 #' @return a data frame containing the model relations information.
 #' @export
 loadModelRelations <- function(modelName){
-  dir <-  file.path("./models", modelName)
+  dir <-  file.path("models", modelName)
   fromJSON(file.path(dir, "relations.json"), simplifyDataFrame = FALSE)
 }
 
@@ -89,7 +89,7 @@ loadModelRelations <- function(modelName){
 #' @export
 saveModel <- function(modelData) {
   modelName <- modelData$status$name
-  dir <- file.path("./models", modelName)
+  dir <- file.path("models", modelName)
   writeLines(prettify(toJSON(modelData$status, auto_unbox=TRUE)), file.path(dir, "status.json"))
   writeLines(prettify(toJSON(modelData$concepts, auto_unbox=TRUE)), file.path(dir, "concepts.json"))
   writeLines(prettify(toJSON(modelData$relations, auto_unbox=TRUE)), file.path(dir, "relations.json"))

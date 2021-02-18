@@ -33,8 +33,8 @@ shinyUI(
                #img(src = "demo_graph.png", height = 200, width = 275, style = "display: block; margin-left: auto; margin-right: auto"),
                p("The direction of each edge (i.e. the direction of the arrow) specifies the relationship between causal and affected concepts. Edge weights specify the strength (Very Low to Very High) and directionality (+ or -) of causal effects."), # A positive sign for an edge weight means that an increase in the causing concept causes an increase in the affected concept."),
                hr(),
-               h4("Copyright and License"),
-               p("This application was loosely built based on The Logic Laboratory, an R Shiny application developed by Brian Gregor (Oregon Systems Analytics) with funding from the Oregon Department of Transportation (2016). The original software is licensed with the Apache 2 open source license.")
+               h4("Credits"),
+               p("This application was loosely built based on The Logic Laboratory, an open-source R Shiny application developed by Brian Gregor (Oregon Systems Analytics), 2016.")
              )
     ),
     # User Info -------------------
@@ -89,7 +89,7 @@ shinyUI(
                                       # textInput("minValue", "Minimum Value"),
                                       # textInput("maxValue", "Maximum Value"),
                                       # textareaInput("valuesDesc", "Values Description (optional)"),
-                                      textInput("conceptGroup", "Concept Group"),
+                                      textInput("conceptGroup", "Category"),
                                       conditionalPanel(
                                         condition = "input.modelAction != 'runModel'",
                                         wellPanel(
@@ -182,6 +182,7 @@ shinyUI(
                  numericInput("numIterations", 
                               "Timesteps to run", 
                               value = 30),
+                 uiOutput("initSlider"),
                  hr(),
                  tabsetPanel(type = "tabs",
                      tabPanel("Set Parameters",
@@ -190,7 +191,6 @@ shinyUI(
                                           choices = c("Sigmoid (Logistic)"="sigmoid-exp","Sigmoid (Tanh)"="sigmoid-tanh","Linear (f(x) = x-h)"="linear"), selected="sigmoid-exp"),
                               plotOutput("FCMFunction", height = "250px"),
                               sliderInput("sliderFCM_h", "Choose h", min=-1, max=1, step = 0.25, value = 0), 
-                              uiOutput("initSlider"),
                               conditionalPanel(
                                 condition = "input.selectFCM_fn != 'linear'",
                                 sliderInput("sliderFCM_lambda", "Choose lambda", min=0, max=10, step = 0.25, value = 3)
@@ -206,7 +206,9 @@ shinyUI(
                               uiOutput("clampSlider"),
                               actionButton("addFCMConstraint", "Add/ modify constraint"),
                               actionButton("deleteFCMConstraint", "Delete constraint"),
-                              actionButton("clearAllFCMConstraints", "Clear all constraints")
+                              actionButton("clearAllFCMConstraints", "Clear all constraints"),
+                              hr(),
+                              p("Note: These constraints will override any initial values.")
                      )
                  )
                ), #sidebarPanel

@@ -10,10 +10,8 @@
 #   affected_by: (list of[#things that affect it])
 
 
-# Running t
-
 ## NOTES ON THIS VERSION:
-# (2021/02) This version of the model does not use min/max values (commented out)
+# (2021/02) This version of the model does not use min/max concept values (commented out) -- a relic of the original Logic Laboratory app
 
 # Load packages and necessary scripts ---------------
 library(shiny) 
@@ -97,7 +95,7 @@ shinyServer(function(input, output, session) {
   # Function to update concept form inputs
   updateConceptForm <- function(RowNum) {
     updateTextInput(session, "conceptName",
-                    value = model$concepts$concept[RowNum])
+                    value = model$concepts$name[RowNum])
     updateTextInput(session, "conceptID",
                     value = model$concepts$concept_id[RowNum])
     updateTextInput(session, "conceptDesc",
@@ -231,15 +229,20 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$addConcept,
     {
-      is$newconcept <- TRUE
+      if (input$conceptID %in% model$concepts$concept_id) {
+        createAlert(session = session, anchorId = "duplicateConceptVariable", 
+                    title = "Duplicate ID", 
+                    content = "New concept ID is the same as an existing concept. Rename before updating.")
+        return()        
+      }
       model$concepts <- model$concepts[c(1,1:nrow(model$concepts)),]
-      model$concepts$concept[1] <- ""
-      model$concepts$concept_id[1] <- ""
-      model$concepts$description[1] <- ""
+      model$concepts$name[1] <- input$conceptName
+      model$concepts$concept_id[1] <- input$conceptID
+      model$concepts$description[1] <- input$conceptDesc
+      model$concepts$group[1] <- input$conceptGroup
       # model$concepts$values$min[1] <- ""
       # model$concepts$values$max[1] <- ""
       # model$concepts$values$description[1] <- ""
-      model$concepts$group[1] <- ""
       RowNum <- input$conceptsTableEditing_rows_selected
       updateConceptForm(RowNum)
     }
@@ -248,37 +251,33 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$updateConcept,
     {
-      # Check whether if new concept and duplicate name or variable
-      IsDupName <- input$conceptName %in% model$concepts$concept
-      IsDupVar <- input$conceptID %in% model$concepts$concept_id
-      if (is$newconcept & IsDupName) {
-        createAlert(session = session, anchorId = "duplicateConceptName", 
-                    title = "Duplicate Concept Name", 
-                    content = "New concept name is the same as name for an existing concept. Rename before updating.")
-        return()        
-      }
-      if (is$newconcept & IsDupVar) {
-        createAlert(session = session, anchorId = "duplicateConceptVariable", 
-                    title = "Duplicate Concept Nickname", 
-                    content = "New concept nickname is the same as nickname for an existing concept. Rename before updating.")
-        return()        
-      }
-      
       saveLastState() # save state of current model
       
-      # Update model concepts
-      RowNum <- input$conceptsTableEditing_rows_selected
-      model$concepts$concept[RowNum] <- input$conceptName
-      model$concepts$concept_id[RowNum] <- input$conceptID
-      model$concepts$description[RowNum] <- input$conceptDesc
-      # model$concepts$values$min[RowNum] <- input$minValue
-      # model$concepts$values$max[RowNum] <- input$maxValue
-      # model$concepts$values$description[RowNum] <- input$valuesDesc
-      model$concepts$group[RowNum] <- input$conceptGroup
+      # If ID already exists, just update the rest
+      if (input$conceptID %in% model$concepts$concept_id) {
+        idx <- model$concepts$concept_id == input$conceptID
+        # Update model concepts corresponding to that ID
+        model$concepts[idx,"name"] <- input$conceptName
+        model$concepts[idx,"description"] <- input$conceptDesc
+        model$concepts[idx, "group"] <- input$conceptGroup
+        # model$concepts[idx, "values.min"] <- input$minValue
+        # model$concepts[idx, "values.max"] <- input$maxValue
+        # model$concepts[idx, "values.description"] <- input$valuesDesc
+      } else {
+        # If not, update everything based on the row selected
+        
+        # Update model concepts
+        RowNum <- input$conceptsTableEditing_rows_selected
+        model$concepts$name[RowNum] <- input$conceptName
+        model$concepts$concept_id[RowNum] <- input$conceptID
+        model$concepts$description[RowNum] <- input$conceptDesc
+        model$concepts$group[RowNum] <- input$conceptGroup
+        # model$concepts$values$min[RowNum] <- input$minValue
+        # model$concepts$values$max[RowNum] <- input$maxValue
+        # model$concepts$values$description[RowNum] <- input$valuesDesc
+      }
+
       model$status$lastedit <- as.character(Sys.time())
-      
-      # Reset newconcept flag
-      is$newconcept <- FALSE
       
       showNotification(
         ui = "Concept updated",
@@ -636,7 +635,7 @@ shinyServer(function(input, output, session) {
   
   # Output: Define slider to select initial starting values --------
   output$initSlider <- renderUI({
-    sliderInput("sliderFCM_init", "Choose initial values for unconstrained concepts", min=clampSliderMin(), max=1, step = 0.25, value = 1)
+    sliderInput("sliderFCM_init", "Initial values for simulation", min=clampSliderMin(), max=1, step = 0.25, value = 1)
   })
   
   # Output: Define dropdown element to select concept for constraining / clamping --------------
@@ -656,7 +655,7 @@ shinyServer(function(input, output, session) {
   output$clampSlider <- renderUI({
     sliderInput(
       inputId = "scenVal", 
-      label = "Clamp value", 
+      label = "Value (fixed) throughout simulation", 
       min=clampSliderMin(), max=1, step = 0.5, value = 1)
   })
   
