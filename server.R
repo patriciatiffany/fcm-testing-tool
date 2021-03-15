@@ -69,27 +69,37 @@ shinyServer(function(input, output, session) {
     history$weight_vals <- model$weight_vals
   }
   # Function to swap model and history (i.e. undo)
-  swapState <- function() {
-    Status <- model$status
-    Concepts <- model$concepts
-    Relations <- model$relations
-    Weights <- model$weight_vals
-    model$status <- history$status
-    model$concepts <- history$concepts
-    model$relations <- history$relations
-    model$weight_vals <- history$weight_vals
-    history$status <- Status
-    history$concepts <- Concepts
-    history$relations <- Relations
-    history$weight_vals <- Weights
+  swapState <- function(swap = "all") {
+    
+    if (swap == "concept" || swap == "all"){
+      concepts <- model$concepts
+      model$concepts <- history$concepts
+      history$concepts <- concepts
+    } 
+    if (swap == "relation" || swap == "all"){
+      relations <- model$relations
+      model$relations <- history$relations
+      history$relations <- relations
+    }
+    
+    if (swap == "all"){
+      weights <- model$weight_vals
+      model$weight_vals <- history$weight_vals
+      history$weight_vals <- weights
+      
+      status <- model$status
+      model$status <- history$status
+      history$status <- status
+    }
+    
   }
   # Function to undo concept edit
   undoConceptEdit <- function() {
-    swapState()
+    swapState("concept")
   }
   # Function to undo relation edit
   undoRelationEdit <- function() {
-    swapState()
+    swapState("relation")
   }
   
   # Function to update concept form inputs
@@ -100,12 +110,6 @@ shinyServer(function(input, output, session) {
                     value = model$concepts$concept_id[RowNum])
     updateTextInput(session, "conceptDesc",
                     value = model$concepts$description[RowNum])
-    # updateTextInput(session, "minValue",
-    #                 value = model$concepts$values$min[RowNum])
-    # updateTextInput(session, "maxValue",
-    #                 value = model$concepts$values$max[RowNum])
-    # updateTextInput(session, "valuesDesc",
-    #                 value = model$concepts$values$description[RowNum])
     updateTextInput(session, "conceptGroup",
                     value = model$concepts$group[RowNum])
   }
@@ -240,9 +244,6 @@ shinyServer(function(input, output, session) {
       model$concepts$concept_id[1] <- input$conceptID
       model$concepts$description[1] <- input$conceptDesc
       model$concepts$group[1] <- input$conceptGroup
-      # model$concepts$values$min[1] <- ""
-      # model$concepts$values$max[1] <- ""
-      # model$concepts$values$description[1] <- ""
       RowNum <- input$conceptsTableEditing_rows_selected
       updateConceptForm(RowNum)
     }
@@ -260,9 +261,6 @@ shinyServer(function(input, output, session) {
         model$concepts[idx,"name"] <- input$conceptName
         model$concepts[idx,"description"] <- input$conceptDesc
         model$concepts[idx, "group"] <- input$conceptGroup
-        # model$concepts[idx, "values.min"] <- input$minValue
-        # model$concepts[idx, "values.max"] <- input$maxValue
-        # model$concepts[idx, "values.description"] <- input$valuesDesc
       } else {
         # If not, update everything based on the row selected
         
@@ -272,9 +270,6 @@ shinyServer(function(input, output, session) {
         model$concepts$concept_id[RowNum] <- input$conceptID
         model$concepts$description[RowNum] <- input$conceptDesc
         model$concepts$group[RowNum] <- input$conceptGroup
-        # model$concepts$values$min[RowNum] <- input$minValue
-        # model$concepts$values$max[RowNum] <- input$maxValue
-        # model$concepts$values$description[RowNum] <- input$valuesDesc
       }
 
       model$status$lastedit <- as.character(Sys.time())
@@ -722,6 +717,7 @@ shinyServer(function(input, output, session) {
     as.numeric(split)
   }
   
+  # Text to display on the UI
   output$sweepText <- renderText({
     nums <- extract(input$sweepingVals)
     if (anyNA(nums)) {
@@ -757,28 +753,15 @@ shinyServer(function(input, output, session) {
           type = "message"
         )
       } else{
-        varying_params <- isolate(varying_params())
-        param_vals <- isolate(run_params()) # Get parameters from UI
         
-        # Store information in sweep_results and sweep_params (keep independent from normal runs)
-        N <- prod(sapply(varying_params,length)) # calculate how many runs there will be
-        run$sweep_params <- vector("list",  N) # create new list that will contain all runs (permutations) of sweeps
-        run$sweep_results <- vector("list",  N)
-        run$sweep_constraints <- run$constraints
+        sweep <- run_parameter_sweep(model, isolate(run_params()), isolate(run$constraints), 
+                            varying_params = isolate(varying_params()))
         
-        n <- 1
-        for (p in 1:length(varying_params)){
-          pn = names(varying_params)[p]
-          pvals = varying_params[[p]]
-          # run$parameters[pn] = "multiple"
-          for (i in 1:length(pvals)){
-            params_run = replace(param_vals, pn, pvals[i]) # store all parameters here, using the value in the parameter sweep
-            res <- run_model(model, params_run, run$sweep_constraints, encode = TRUE)
-            run$sweep_params[[n]] <- params_run
-            run$sweep_results[[n]] <- res
-            n <- n + 1
-          }
-        }
+        run$sweep_params <- sweep$params
+        run$sweep_results <- sweep$results
+        run$sweep_constraints <- sweep$constraints
+        # run$parameters[pn] = "multiple"
+        
       }
     }
   )
@@ -805,41 +788,14 @@ shinyServer(function(input, output, session) {
           type = "message"
         )
       } else{
-        conceptsToConstrain <- isolate(input$conceptsForScenarios)
-        # Create new list that will contain all runs (high and low for each concept selected)
-        clampRunResults <- vector("list",  length(conceptsToConstrain) * 2) 
-        for (cn in conceptsToConstrain){
-          run$constraints <- c()
-          run$parameters <- run_params()
-          
-          # Baseline
-          run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
-          scenName <- isolate(scenarioNameString(run$parameters, run$constraints))
-          
-          scenarios$results[[scenName]] <- run$results 
-          scenarios$constraints[[scenName]] <- "none"
-          scenarios$parameters[[scenName]] <- run$parameters
-          
-          # Low scenario
-          run$constraints[cn] <- clampSliderMin()
-          run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
-          scenName <- isolate(scenarioNameString(run$parameters, run$constraints))
-          
-          scenarios$results[[scenName]] <- run$results 
-          scenarios$constraints[[scenName]] <- run$constraints
-          scenarios$parameters[[scenName]] <- run$parameters
-          
-          # High scenario
-          run$constraints[cn] <- 1
-          
-          run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
-          scenName <- isolate(scenarioNameString(run$parameters, run$constraints))
-          
-          scenarios$results[[scenName]] <- run$results 
-          scenarios$constraints[[scenName]] <- run$constraints
-          scenarios$parameters[[scenName]] <- run$parameters
-          
+        newScenarios <- run_auto_scenarios(model, run_params(), isolate(input$conceptsForScenarios), lowVal = clampSliderMin())
+        
+        for (scenName in names(newScenarios$results)){
+          scenarios$results[[scenName]] <- newScenarios$results[[scenName]]
+          scenarios$constraints[[scenName]] <- newScenarios$constraints[[scenName]]
+          scenarios$parameters[[scenName]] <- newScenarios$parameters[[scenName]]
         }
+        
         showNotification(
           ui = paste0("Set of runs (high/ low for each concept) saved to scenario comparison list"),
           duration = 2, 
@@ -1033,7 +989,7 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  # (2) FCM Exploration
+  # (2a) FCM Exploration
   # Output a second (identical) graph for display in the FCM exploration tab -------------------- 
   output$relations_graph2 <- renderGrViz({ 
     if (length(model$concepts)>0){
@@ -1092,17 +1048,8 @@ shinyServer(function(input, output, session) {
   # Output plot of run results  -------------------- 
   output$resultsPlotSim <- renderPlotly({
     if (!is.null(run$results)){
-      df <- run$results
-      # df$timestep <- 1:nrow(df) # now taken care of beforehand
-      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, lambda, h), names_to = "concept", values_to = "value")
-      if (run$parameters$infer_type == "sigmoid-exp"){
-        ylims <- c(0,1)
-      } else {
-        ylims <- c(-1,1)
-      }
-      plot_ly(df, x = ~timestep, y = ~value) %>%
-        add_lines(linetype = ~concept) %>%
-        layout(yaxis = list(range = ylims))
+      plot_time_series(run$results %>% select(-c("init","lambda","h","infer_type")), 
+                       infer_type = run$parameters$infer_type)
     }
   })
   
@@ -1117,35 +1064,15 @@ shinyServer(function(input, output, session) {
   # Output plot of multiple run results (parameter sweep) -------------------- 
   output$sweepPlot <- renderPlotly({
     if (!is.null(run$sweep_results)){
-      df <- bind_rows(run$sweep_results)
-      # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
-      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda, init), names_to = "concept", values_to = "value") 
-      plot <- ggplot(df, aes(x = timestep, y = value, colour = concept)) + theme_minimal() + 
-        geom_line() + facet_wrap(facets=c(isolate(input$sweepingParam)), labeller = label_both) #facet_grid(h ~ lambda, labeller = label_both) 
       
-      gp <- ggplotly(plot) 
-      # Move the axis labels further away from plot
-      gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
-      gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-      gp %>% layout(margin = list(l = 75, b = 75))
-      
+      plot_facet_sweep(run$sweep_results, sweepingParam = isolate(input$sweepingParam))
     }
   })
   
   output$sweepPlotBars <- renderPlotly({
     if (!is.null(run$sweep_results)){
-      df <- bind_rows(run$sweep_results)
-      # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
-      df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda, init), names_to = "concept", values_to = "value") 
-      plot <- ggplot(df %>% filter(timestep==max(timestep)), aes(x = concept, y = value, colour = concept)) + theme_minimal() + 
-        geom_col() + facet_wrap(facets=c(isolate(input$sweepingParam)), labeller = label_both) #facet_grid(h ~ lambda, labeller = label_both) 
       
-      gp <- ggplotly(plot) 
-      # Move the axis labels further away from plot
-      gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
-      gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-      gp %>% layout(margin = list(l = 75, b = 75))
-      
+      plot_facet_sweep_bars(run$sweep_results, sweepingParam = isolate(input$sweepingParam))
     }
   })
   
@@ -1153,18 +1080,9 @@ shinyServer(function(input, output, session) {
   scenarioComparison <- eventReactive(
     c(input$launchScenarioView, input$resetScenarios, input$startModeling),{ # only evaluate when button is pressed and/or things are reset
       if (length(input$scenariosToPlot)>0 && length(scenarios$results)>0){
-        df <- bind_rows(scenarios$results[input$scenariosToPlot], .id = "scenario_name") # single brackets to preserve names
-        # Convert to long format (column names: scenario name, timestep, concept, value)
-        df <- tidyr::pivot_longer(df, !c(timestep, scenario_name, h, lambda, infer_type, init), names_to = "concept", values_to = "value") 
-        # Extract baseline only data and join it back to the relevant rows (join on timestep, concept, infer_type, params)
-        baseline <- df %>% filter(grepl("^baseline",scenario_name)) %>% # Scenario name starts with baseline
-          select(timestep, concept, baseline=value, infer_type, h, lambda, init) # Select relevant columns
-        joined_df <- df %>% left_join(baseline, by=c("timestep", "concept", "infer_type", "h", "lambda", "init")) # Join original with extracted baseline
-        joined_df <- joined_df %>% 
-          mutate(difference = (value-baseline)) %>% 
-          mutate(percent_diff = difference/abs(baseline)*100) %>%
-          replace_na(list(difference = 0, percent_diff = 0))  # replace NAs with 0s so the legend colours stay the same (workaround)
-        # print(joined_df)
+        
+        joined_df <- parse_filter_scenarios(scenarios$results, scenario_names = input$scenariosToPlot)
+        
         return(joined_df)
       } else {
         NULL
@@ -1205,33 +1123,16 @@ shinyServer(function(input, output, session) {
   # Output plot of scenario comparisons (line) -------------------- 
   output$scenarioPlot <- renderPlotly({
     if (!is.null(scenarioComparison())){
-      plot <- ggplot(scenarioComparison(), aes_(x = ~timestep, y = as.name(input$scenarioPlotY), colour = ~scenario_name)) + 
-        geom_line(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
-        theme(panel.spacing.y = unit(2, "lines")) 
       
-      gp <- ggplotly(plot) 
-      # Move the axis labels further away from plot
-      gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
-      gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-      gp %>% layout(margin = list(l = 75, b= 100))
+      plot_comparison(scenarioComparison(), yVar = input$scenarioPlotY)
     }
   })
   
   # Output plot of scenario comparisons (bar) -------------------- 
   output$scenarioPlotBars <- renderPlotly({
     if (!is.null(scenarioComparison())){
-      plot <- ggplot(scenarioComparison() %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = as.name(input$scenarioPlotY), fill = ~scenario_name)) + 
-        geom_col(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
-        theme(panel.spacing.y = unit(2, "lines")) + 
-        theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
-              axis.ticks.x=element_blank()) + 
-        geom_hline(yintercept = 0, color = "black")
       
-      gp <- ggplotly(plot) 
-      # Move the axis labels further away from plot
-      # gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
-      gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-      gp %>% layout(margin = list(l = 75, b= 100))
+      plot_comparison_bars(scenarioComparison(), yVar = input$scenarioPlotY)
     }
   })
   

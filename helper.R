@@ -449,6 +449,34 @@ run_model <- function(model, params, constraints, encode=FALSE){
   return(run)
 }
 
+#------------#
+# Run multiple parameters 
+#------------#
+run_parameter_sweep <- function(model, params, constraints, varying_params = c("lambda")){
+  sweep <- list(params = NULL, results = NULL, constraints = NULL)
+  
+  # Store information in sweep_results and sweep_params (keep independent from normal runs)
+  N <- prod(sapply(varying_params,length)) # calculate how many runs there will be
+  sweep$params <- vector("list",  N) # create new list that will contain all runs (permutations) of sweeps
+  sweep$results <- vector("list",  N)
+  sweep$constraints <- constraints
+  
+  n <- 1
+  for (p in 1:length(varying_params)){
+    pn = names(varying_params)[p]
+    pvals = varying_params[[p]]
+
+    for (i in 1:length(pvals)){
+      params_run = replace(params, pn, pvals[i]) # store all parameters here, using the value in the parameter sweep
+      res <- run_model(model, params_run, constraints, encode = TRUE)
+      sweep$params[[n]] <- params_run
+      sweep$results[[n]] <- res
+      n <- n + 1
+    }
+  }
+  return(sweep)
+}
+
 #---------------#
 # Create string from current parameters and constraints
 #---------------#
@@ -467,3 +495,151 @@ scenarioNameString <- function(params, constraints_list){
   
 }
 
+#----------------#
+# Run multiple constraints 
+#----------------#
+
+run_auto_scenarios <- function(model, params, conceptsToConstrain, lowVal = 0, highVal = 1){
+  # Create new list that will contain all runs (high and low for each concept selected)
+  clampRunResults <- vector("list",  length(conceptsToConstrain) * 2) 
+  newScenarios <- list(results = NULL, constraints = NULL, parameters = NULL)
+  
+  for (cn in conceptsToConstrain){
+    constraints <- c()
+    
+    # Baseline
+    results <- run_model(model, params, constraints, encode = TRUE)
+    scenName <- scenarioNameString(params, constraints)
+    
+    newScenarios$results[[scenName]] <- results 
+    newScenarios$constraints[[scenName]] <- "none"
+    newScenarios$parameters[[scenName]] <- params
+    
+    # Low scenario
+    constraints[cn] <- lowVal
+    results <- run_model(model, params, constraints, encode = TRUE)
+    scenName <- scenarioNameString(params, constraints)
+    
+    newScenarios$results[[scenName]] <- results 
+    newScenarios$constraints[[scenName]] <- constraints
+    newScenarios$parameters[[scenName]] <- params
+    
+    # High scenario
+    constraints[cn] <- highVal
+    
+    results <- run_model(model, params, constraints, encode = TRUE)
+    scenName <- scenarioNameString(params, constraints)
+    
+    newScenarios$results[[scenName]] <- results 
+    newScenarios$constraints[[scenName]] <- constraints
+    newScenarios$parameters[[scenName]] <- params
+  }
+    
+    return(newScenarios)
+}
+
+# DATA CLEANING =================
+#------------#
+# Parse scenario data and filter
+#------------#
+parse_filter_scenarios <- function(results_list, scenario_names = NULL){
+    if (is.null(scenario_names)){
+      df <- bind_rows(results_list, .id = "scenario_name") # single brackets to preserve names
+    } else {
+      df <- bind_rows(results_list[scenario_names], .id = "scenario_name") # single brackets to preserve names
+    }
+    # Convert to long format (column names: scenario name, timestep, concept, value)
+    df <- tidyr::pivot_longer(df, !c(timestep, scenario_name, h, lambda, infer_type, init), names_to = "concept", values_to = "value") 
+    # Extract baseline only data and join it back to the relevant rows (join on timestep, concept, infer_type, params)
+    baseline <- df %>% filter(grepl("^baseline",scenario_name)) %>% # Scenario name starts with baseline
+      select(timestep, concept, baseline=value, infer_type, h, lambda, init) # Select relevant columns
+    joined_df <- df %>% left_join(baseline, by=c("timestep", "concept", "infer_type", "h", "lambda", "init")) # Join original with extracted baseline
+    joined_df <- joined_df %>% 
+      mutate(difference = (value-baseline)) %>% 
+      mutate(percent_diff = difference/abs(baseline)*100) %>%
+      replace_na(list(difference = 0, percent_diff = 0))  # replace NAs with 0s so the legend colours stay the same (workaround)
+    # print(joined_df)
+    return(joined_df)
+}
+
+# PLOTS =========================
+#------------#
+# Plot results
+#------------#
+plot_time_series <- function(df, infer_type = "sigmoid-exp"){
+  # df$timestep <- 1:nrow(df) # now taken care of beforehand)
+  df <- tidyr::pivot_longer(df, !c(timestep), names_to = "concept", values_to = "value")
+  if (infer_type == "sigmoid-exp"){
+    ylims <- c(0,1)
+  } else {
+    ylims <- c(-1,1)
+  }
+  plot <- plot_ly(df, x = ~timestep, y = ~value) %>%
+    add_lines(linetype = ~concept) %>%
+    layout(yaxis = list(range = ylims))
+  
+  return(plot)
+}
+
+#------------#
+# Plot results for parameter sweep
+#------------#
+plot_facet_sweep <- function(df_list, sweepingParams = c("lambda")){
+  df <- bind_rows(df_list)
+  # Convert to long format (note: this line needs to match the extra columns added in the run_model function above
+  df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda, init), names_to = "concept", values_to = "value") 
+  plot <- ggplot(df, aes(x = timestep, y = value, colour = concept)) + theme_minimal() + 
+    geom_line() + facet_wrap(facets=sweepingParams, labeller = label_both) #facet_grid(h ~ lambda, labeller = label_both) 
+  
+  gp <- ggplotly(plot) 
+  # Move the axis labels further away from plot
+  gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+  gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
+  gp %>% layout(margin = list(l = 75, b = 75))
+}
+
+
+plot_facet_sweep_bars <- function(df_list, sweepingParams = c("lambda")){
+  df <- bind_rows(df_list)
+  # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
+  df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda, init), names_to = "concept", values_to = "value") 
+  plot <- ggplot(df %>% filter(timestep==max(timestep)), aes(x = concept, y = value, colour = concept)) + theme_minimal() + 
+    geom_col() + facet_wrap(facets=sweepingParams, labeller = label_both) #facet_grid(h ~ lambda, labeller = label_both) 
+  
+  gp <- ggplotly(plot) 
+  # Move the axis labels further away from plot
+  gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+  gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
+  gp %>% layout(margin = list(l = 75, b = 75))
+}
+
+#--------#
+# Plot scenario comparisons
+#--------#
+
+plot_comparison <- function(df, yVar = "value"){
+  plot <- ggplot(df, aes_(x = ~timestep, y = as.name(yVar), colour = ~scenario_name)) + 
+    geom_line(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
+    theme(panel.spacing.y = unit(2, "lines")) 
+  
+  gp <- ggplotly(plot) 
+  # Move the axis labels further away from plot
+  gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+  gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
+  gp %>% layout(margin = list(l = 75, b= 100))
+}
+
+plot_comparison_bars <- function(df, yVar = "value"){
+  plot <- ggplot(df %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = as.name(yVar), fill = ~scenario_name)) + 
+    geom_col(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
+    theme(panel.spacing.y = unit(2, "lines")) + 
+    theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()) + 
+    geom_hline(yintercept = 0, color = "black")
+  
+  gp <- ggplotly(plot) 
+  # Move the axis labels further away from plot
+  # gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+  gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
+  gp %>% layout(margin = list(l = 75, b= 100))
+}
