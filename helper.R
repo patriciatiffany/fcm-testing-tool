@@ -502,7 +502,7 @@ scenarioNameString <- function(params, constraints_list){
 run_auto_scenarios <- function(model, params, conceptsToConstrain, lowVal = 0, highVal = 1){
   # Create new list that will contain all runs (high and low for each concept selected)
   clampRunResults <- vector("list",  length(conceptsToConstrain) * 2) 
-  newScenarios <- list(results = NULL, constraints = NULL, parameters = NULL)
+  newScenarios <- list(results = list(), constraints = list(), parameters = list())
   
   for (cn in conceptsToConstrain){
     constraints <- c()

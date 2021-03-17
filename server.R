@@ -58,7 +58,7 @@ shinyServer(function(input, output, session) {
   run <- reactiveValues(results = NULL, parameters= NULL, constraints = NULL, sweep_params = NULL, sweep_results = NULL)
 
   # Create a reactive object to store scenario data in
-  scenarios <- reactiveValues(results = NULL, constraints = NULL, parameters = NULL)
+  scenarios <- reactiveValues(results = list(), constraints = list(), parameters = list())
 
   # === DEFINE COMMON FUNCTIONS FOR MODIFYING REACTIVE VALUES ----- ===================
   # Function to save the model in history
@@ -147,9 +147,9 @@ shinyServer(function(input, output, session) {
     run$sweep_params <- NULL
     run$sweep_results <- NULL
     run$sweep_constraints <- NULL
-    scenarios$results <- NULL
-    scenarios$constraints <- NULL
-    scenarios$parameters <- NULL
+    scenarios$results <- list()
+    scenarios$constraints <- list()
+    scenarios$parameters <- list()
   }
   
   resetRun <- function(){
@@ -163,9 +163,9 @@ shinyServer(function(input, output, session) {
   }
   
   resetScenarios <- function(){
-    scenarios$results <- NULL
-    scenarios$constraints <- NULL
-    scenarios$parameters <- NULL
+    scenarios$results <- list()
+    scenarios$constraints <- list()
+    scenarios$parameters <- list()
   }
   
   # === IMPLEMENT INTERFACE FOR INITIALIZING MODEL ------ =========================
@@ -900,9 +900,9 @@ shinyServer(function(input, output, session) {
   # Reset scenario view -----
   observeEvent(
     input$resetScenarios,{
-      scenarios$results <- NULL
-      scenarios$constraints <- NULL
-      scenarios$parameters <- NULL
+      scenarios$results <- list()
+      scenarios$constraints <- list()
+      scenarios$parameters <- list()
       # Clear output?
     }
   )
