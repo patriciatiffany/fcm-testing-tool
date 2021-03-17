@@ -285,9 +285,9 @@ shinyUI(
                                    br(),
                                    conditionalPanel(condition="input.scenarioPlotY != 'value'",
                                                     span( textOutput('scenarioPlotWarning'), style="color:red")),
-                                   plotlyOutput(outputId = "scenarioPlot", height = "650px"),
+                                   plotOutput(outputId = "scenarioPlot", height = "650px"), #plotlyOutput
                                    hr(),
-                                   plotlyOutput(outputId = "scenarioPlotBars", height = "650px"),
+                                   plotOutput(outputId = "scenarioPlotBars", height = "650px"),
                                    hr(),
                                    fluidRow(
                                      column(6, textInput("scenFileName", label="File Name", value="saved_scenarios.Rmd"),

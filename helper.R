@@ -534,7 +534,6 @@ run_auto_scenarios <- function(model, params, conceptsToConstrain, lowVal = 0, h
     newScenarios$constraints[[scenName]] <- constraints
     newScenarios$parameters[[scenName]] <- params
   }
-    
     return(newScenarios)
 }
 
@@ -603,8 +602,9 @@ plot_facet_sweep_bars <- function(df_list, sweepingParams = c("lambda")){
   df <- bind_rows(df_list)
   # Convert to long format (note: this line needs to match the extra columns added in the runFCMSweepAction function above
   df <- tidyr::pivot_longer(df, !c(timestep, infer_type, h, lambda, init), names_to = "concept", values_to = "value") 
-  plot <- ggplot(df %>% filter(timestep==max(timestep)), aes(x = concept, y = value, colour = concept)) + theme_minimal() + 
-    geom_col() + facet_wrap(facets=sweepingParams, labeller = label_both) #facet_grid(h ~ lambda, labeller = label_both) 
+  plot <- ggplot(df %>% filter(timestep==max(timestep)), aes(x = concept, y = value, fill = concept)) + theme_minimal() + 
+    geom_col() + facet_wrap(facets=sweepingParams, labeller = label_both) + #facet_grid(h ~ lambda, labeller = label_both) 
+    theme(axis.text.x=element_blank()) 
   
   gp <- ggplotly(plot) 
   # Move the axis labels further away from plot
@@ -619,27 +619,36 @@ plot_facet_sweep_bars <- function(df_list, sweepingParams = c("lambda")){
 
 plot_comparison <- function(df, yVar = "value"){
   plot <- ggplot(df, aes_(x = ~timestep, y = as.name(yVar), colour = ~scenario_name)) + 
-    geom_line(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
-    theme(panel.spacing.y = unit(2, "lines")) 
+    geom_line(show.legend = TRUE, size=1.5) + facet_wrap(vars(concept)) + theme_minimal() + 
+    theme(panel.spacing.y = unit(2, "lines")) + 
+    labs(title = "Concepts under different scenarios over time", colour = "Scenario")
   
-  gp <- ggplotly(plot) 
-  # Move the axis labels further away from plot
-  gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
-  gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-  gp %>% layout(margin = list(l = 75, b= 100))
+  return(plot)
+  
+  ## Commented out plotly lines 2021/03/17
+  # gp <- ggplotly(plot) 
+  # # Move the axis labels further away from plot
+  # gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+  # gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
+  # gp %>% layout(margin = list(l = 75, b= 100))
 }
 
 plot_comparison_bars <- function(df, yVar = "value"){
   plot <- ggplot(df %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = as.name(yVar), fill = ~scenario_name)) + 
     geom_col(show.legend = TRUE) + facet_wrap(vars(concept)) + theme_minimal() + 
     theme(panel.spacing.y = unit(2, "lines")) + 
-    theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
-          axis.ticks.x=element_blank()) + 
+    theme(axis.text.x=element_blank()) + 
+    labs(title = "Concept 'equilibrium' states under different scenarios", 
+         fill = "Scenario", x = "concepts at end of simulation (different scenarios)")
     geom_hline(yintercept = 0, color = "black")
   
-  gp <- ggplotly(plot) 
-  # Move the axis labels further away from plot
-  # gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
-  gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
-  gp %>% layout(margin = list(l = 75, b= 100))
+  return(plot)
+  
+  # gp <- ggplotly(plot) 
+  # # Move the axis labels further away from plot
+  # # gp[['x']][['layout']][['annotations']][[1]][['y']] <- -0.1 # x axis label
+  # gp[['x']][['layout']][['annotations']][[2]][['x']] <- -0.1 # y axis label
+  # gp %>% layout(margin = list(l = 75, b= 100))
 }
+
+# Later: fix colours? http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/

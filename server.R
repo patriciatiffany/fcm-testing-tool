@@ -658,7 +658,7 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$addFCMConstraint,
     {
-      if (is.null(run$constraints)){
+      if (length(run$constraints)==0){
         run$constraints <- c()
       }
       run$constraints[input$scenVar] <- input$scenVal
@@ -855,7 +855,7 @@ shinyServer(function(input, output, session) {
           closeButton = TRUE,
           type = "message"
         )
-      } else if (is.null(run$sweep_results)){
+      } else if (length(run$sweep_results)==0){
         showNotification(
           ui = paste0("Please run before proceeding."),
           duration = 2, 
@@ -1017,7 +1017,7 @@ shinyServer(function(input, output, session) {
   
   # Output table displaying parameters used for run -------------------- 
   output$paramsTable <- renderTable(
-    if (!is.null(run$parameters)){
+    if (length(run$parameters)>0){
       params <- run$parameters
       if (params$infer_type == "linear"){
         data.frame("Function type" = params$infer_type, "h" = NA, "Lambda" = NA, 
@@ -1040,14 +1040,14 @@ shinyServer(function(input, output, session) {
   
   # Output table of model run/ simulation results  -------------------- 
   output$resultsTable <- DT:: renderDataTable(
-    if(!is.null(run$results)){run$results %>% select(-c("init","lambda","h","infer_type"))} else {run$results},
+    if(length(run$results)>0){run$results %>% select(-c("init","lambda","h","infer_type"))} else {run$results},
     server = FALSE,
     options = list(dom='tp', pageLength = 15)
   )
   
   # Output plot of run results  -------------------- 
   output$resultsPlotSim <- renderPlotly({
-    if (!is.null(run$results)){
+    if (length(run$results)>0){
       plot_time_series(run$results %>% select(-c("init","lambda","h","infer_type")), 
                        infer_type = run$parameters$infer_type)
     }
@@ -1063,14 +1063,14 @@ shinyServer(function(input, output, session) {
   
   # Output plot of multiple run results (parameter sweep) -------------------- 
   output$sweepPlot <- renderPlotly({
-    if (!is.null(run$sweep_results)){
+    if (length(run$sweep_results)>0){
       
       plot_facet_sweep(run$sweep_results, sweepingParam = isolate(input$sweepingParam))
     }
   })
   
   output$sweepPlotBars <- renderPlotly({
-    if (!is.null(run$sweep_results)){
+    if (length(run$sweep_results)>0){
       
       plot_facet_sweep_bars(run$sweep_results, sweepingParam = isolate(input$sweepingParam))
     }
@@ -1121,7 +1121,7 @@ shinyServer(function(input, output, session) {
   })
   
   # Output plot of scenario comparisons (line) -------------------- 
-  output$scenarioPlot <- renderPlotly({
+  output$scenarioPlot <- renderPlot({ # renderPlotly
     if (!is.null(scenarioComparison())){
       
       plot_comparison(scenarioComparison(), yVar = input$scenarioPlotY)
@@ -1129,7 +1129,7 @@ shinyServer(function(input, output, session) {
   })
   
   # Output plot of scenario comparisons (bar) -------------------- 
-  output$scenarioPlotBars <- renderPlotly({
+  output$scenarioPlotBars <- renderPlot({
     if (!is.null(scenarioComparison())){
       
       plot_comparison_bars(scenarioComparison(), yVar = input$scenarioPlotY)
