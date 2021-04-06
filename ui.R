@@ -289,6 +289,8 @@ shinyUI(
                                    hr(),
                                    plotOutput(outputId = "scenarioPlotBars", height = "650px"),
                                    hr(),
+                                   plotOutput(outputId = "scenarioPlotSlope", height = "650px"),
+                                   hr(),
                                    fluidRow(
                                      column(6, textInput("scenFileName", label="File Name", value="saved_scenarios.Rmd"),
                                             actionButton("saveScenarios", "Save these scenarios for later")),

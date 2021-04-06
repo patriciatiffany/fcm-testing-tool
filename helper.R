@@ -548,17 +548,29 @@ parse_filter_scenarios <- function(results_list, scenario_names = NULL){
       df <- bind_rows(results_list[scenario_names], .id = "scenario_name") # single brackets to preserve names
     }
     # Convert to long format (column names: scenario name, timestep, concept, value)
-    df <- tidyr::pivot_longer(df, !c(timestep, scenario_name, h, lambda, infer_type, init), names_to = "concept", values_to = "value") 
+    df <- tidyr::pivot_longer(df, !c(timestep, scenario_name, h, lambda, infer_type, init), names_to = "concept", values_to = "value") %>%
+      mutate(is_baseline = grepl("^baseline",scenario_name))
+    
     # Extract baseline only data and join it back to the relevant rows (join on timestep, concept, infer_type, params)
-    baseline <- df %>% filter(grepl("^baseline",scenario_name)) %>% # Scenario name starts with baseline
+    baseline <- df %>% filter(is_baseline) %>% # Scenario name starts with baseline
       select(timestep, concept, baseline=value, infer_type, h, lambda, init) # Select relevant columns
     joined_df <- df %>% left_join(baseline, by=c("timestep", "concept", "infer_type", "h", "lambda", "init")) # Join original with extracted baseline
     joined_df <- joined_df %>% 
       mutate(difference = (value-baseline)) %>% 
       mutate(percent_diff = difference/abs(baseline)*100) %>%
       replace_na(list(difference = 0, percent_diff = 0))  # replace NAs with 0s so the legend colours stay the same (workaround)
-    # print(joined_df)
     return(joined_df)
+}
+
+#------------#
+# Utility function to take output of function above (joined_df) and create two types of data points (baseline, modified) for each scenario
+#------------#
+tidy_slope_graph <- function(joined_df){
+  new_df <- joined_df %>% select(-c(difference, percent_diff)) %>% filter(!is_baseline) %>%
+    tidyr::pivot_longer(c(baseline, value), names_to = "scenario_type", values_to = "value") #%>%
+    # mutate(scenario_type = if_else(scenario_type=="value", "modified scenario", scenario_type))
+    
+    return(new_df)
 }
 
 # PLOTS =========================
@@ -618,6 +630,7 @@ plot_facet_sweep_bars <- function(df_list, sweepingParams = c("lambda")){
 #--------#
 
 plot_comparison <- function(df, yVar = "value"){
+  
   plot <- ggplot(df, aes_(x = ~timestep, y = as.name(yVar), colour = ~scenario_name)) + 
     geom_line(show.legend = TRUE, size=1.5) + facet_wrap(vars(concept)) + theme_minimal() + 
     theme(panel.spacing.y = unit(2, "lines")) + 
@@ -639,7 +652,7 @@ plot_comparison_bars <- function(df, yVar = "value"){
     theme(panel.spacing.y = unit(2, "lines")) + 
     theme(axis.text.x=element_blank()) + 
     labs(title = "Concept 'equilibrium' states under different scenarios", 
-         fill = "Scenario", x = "concepts at end of simulation (different scenarios)")
+         fill = "Scenario", x = "concepts at end of simulation (different scenarios)") +
     geom_hline(yintercept = 0, color = "black")
   
   return(plot)
@@ -652,3 +665,14 @@ plot_comparison_bars <- function(df, yVar = "value"){
 }
 
 # Later: fix colours? http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+
+plot_comparison_slope <- function(df){
+  plot <- ggplot(tidy_slope_graph(df) %>% filter(timestep==max(timestep)), 
+                 aes(x = scenario_type, y = value, colour = scenario_name, group=scenario_name)) +
+    geom_line(size = 2) + geom_point(size = 4) + facet_wrap(vars(concept)) + theme_minimal() +
+    theme(panel.spacing.y = unit(2, "lines")) +
+    labs(title = "Concept 'equilibrium' states under different scenarios",
+         fill = "Scenario", x = "concepts at end of simulation (different scenarios)")
+
+  return(plot)
+}

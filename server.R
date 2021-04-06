@@ -1136,4 +1136,14 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  # Output plot of scenario comparisons (slope graph) -------------------- 
+  output$scenarioPlotSlope <- renderPlot({
+    if (!is.null(scenarioComparison())){
+      
+      plot_comparison_slope(scenarioComparison())
+    }
+  })
+  
+
+  
 }) #end: shinyServer
