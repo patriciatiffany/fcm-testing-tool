@@ -58,12 +58,17 @@ shinyUI(
                                        radioButtons(
                                          inputId = "modelAction", 
                                          label = "Model Action",
-                                         choices = list("Select an Existing Model" = "select_existing"),
+                                         choices = list("Select an existing model" = "select_existing",
+                                                        "Create a new model" = "create_new"),
                                          selected = "select_existing"
                                        ),
                                        conditionalPanel(
                                          condition = "input.modelAction == 'select_existing'",
                                          uiOutput("selectExistingModelFile")
+                                       ),
+                                       conditionalPanel(
+                                         condition = "input.modelAction == 'create_new'",
+                                         textInput("newModelFileName", "Model Name", "")
                                        ),
                                        actionButton("startModeling", "Start Working on Model"),
                                        bsAlert("nofileAlert"),

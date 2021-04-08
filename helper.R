@@ -6,6 +6,67 @@
 
 # === INITIALIZING, LOADING, AND SAVING MODELS ==================
 
+#----------------------
+#Initialize a New Model
+#----------------------
+#' Initialize a new model.
+#'
+#' \code{initializeNewModel} initializes a new model by creating a directory
+#' with the model name. Creates and saves a model status list.
+#'
+#' This function initializes a new model with the given model name. It does this
+#' by creating a directory with the model name and a list to store the model
+#' status. This list is saved in the model directory in JSON format and is
+#' also returned by the function. The status list contains the name of the
+#' model, the date and time is was created, and the date
+#' and time it was last edited (same as creation time).
+#'
+#' @param ModelsDir a string identifying the path to the models folder in which
+#' the model is located.
+#' @param ModelName a string identifying the model name.
+#' @param Author a string identifying the author's name.
+#' @return a list containing values for name, parent, created, and lastedit.
+#' @importFrom jsonlite toJSON
+#' @export
+initializeNewModel <- function(modelName, authorName) {
+  if (modelName == ""){
+    return(NULL)
+  }
+  #Create directory for model
+  newDir <-  file.path("models", modelName)
+  dir.create(newDir)
+  #Create and save a status list
+  attribution <- 
+    paste0("Model: ", modelName, " | Author: ", authorName, " | Created: ", as.character(Sys.time()))
+  status_ls <- list(name = modelName,
+                    created = as.character(Sys.time()),
+                    lastedit = as.character(Sys.time()),
+                    attribution = attribution,
+                    notes = character(0))
+  
+  writeLines(toJSON(status_ls), file.path(newDir, "status.json"))
+  #Copy and save the concept and relations template files
+  file.copy(
+    file.path("models/templates/concepts.json"), newDir
+  )
+  file.copy(
+    file.path("models/templates/relations.json"), newDir
+  )
+  #Create scenarios directory if does not exist
+  scenarioPath <- file.path(newDir, "scenarios")
+  if (!dir.exists(scenarioPath)) {
+    dir.create(scenarioPath)
+  }
+  #Create analysis directory if does not exist
+  analysisPath <- file.path(newDir, "analysis")
+  if (!dir.exists(analysisPath)) {
+    dir.create(analysisPath)
+  }
+  #Return the status list
+  status_ls
+}
+
+
 #--------------------------------#
 # Load Model Status File
 #--------------------------------#

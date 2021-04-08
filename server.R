@@ -207,6 +207,18 @@ shinyServer(function(input, output, session) {
         
       } # end if input$modelAction 
       
+      if(input$modelAction == "create_new"){
+        model$status <- initializeNewModel(input$newModelFileName, ModelAuthor())
+        if (is.null(model$status)){
+          startmessage <- "Model initialization failed. Please enter a model name-- this will be the name of the new directory created"
+        } else {
+          model$concepts <- loadModelConcepts(input$newModelFileName)
+          model$relations <- loadModelRelations(input$newModelFileName) 
+          
+          startmessage <- "New model created from /models/templates"
+        }
+      }
+      
       showNotification(
         ui = startmessage,
         duration = 2, 
@@ -423,7 +435,7 @@ shinyServer(function(input, output, session) {
         tbl <- isolate(relationstable())
         # Get all the relations that stem from this causal concept
          Effects_df <- tbl[tbl$From==input$causalConcept,]
-        if (nrow(Effects_df)>0){
+        if (length(Effects_df) >0 && nrow(Effects_df)>0){
           selectedfx$to <- Effects_df$To
           selectedfx$from <- Effects_df$From
           selectedfx$direction <- Effects_df$Direction
