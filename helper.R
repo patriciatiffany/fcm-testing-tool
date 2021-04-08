@@ -1,6 +1,6 @@
 # helper.R
 # Author: Patricia Angkiriwang, University of British Columbia - 2019-2021
-# with code initially adapted from open-source R Shiny app by Brian Gregor, Oregon Systems Analytics LLC
+# with code initially adapted from FSDM, an open-source R Shiny app by Brian Gregor, Oregon Systems Analytics LLC
 
 # Note: the templates folder in the models folder needs to exist
 
@@ -221,7 +221,7 @@ formatConceptTable <- function(concepts_df,export=FALSE) {
   } else{ # untested; written 2019/05/20
     df <- data.frame(Name = concepts_df$name,
                      ID = concepts_df$concept_id,
-                     #"Group or Type" = concepts_df$group,
+                     #"Category" = concepts_df$category,
                      Description = concepts_df$description,
                      check.names = FALSE,
                      stringsAsFactors = FALSE)
@@ -457,12 +457,12 @@ makeDot <-
     if (RowGroup == "All") {
       Cr <- Cn
     } else {
-      Cr <- Cn[concepts_df$group %in% RowGroup]
+      Cr <- Cn[concepts_df$category %in% RowGroup]
     }
     if (ColGroup == "All") {
       Cc <- Cn
     } else {
-      Cc <- Cn[concepts_df$group %in% ColGroup]
+      Cc <- Cn[concepts_df$category %in% ColGroup]
     }
     #Select relations and labels matrices for selected rows and columns
     concepts_to_plot <- unique(Cr)

@@ -1,6 +1,6 @@
 # server.R
 # Author: Patricia Angkiriwang, University of British Columbia - 2019-2021
-# with code initially adapted from open-source R Shiny app by Brian Gregor, Oregon Systems Analytics LLC
+# with code initially adapted from FSDM, an open-source R Shiny app by Brian Gregor, Oregon Systems Analytics LLC
 
 ## NOTES ON DATA FORMAT:
 # > model: A model is a list of 2
@@ -110,8 +110,8 @@ shinyServer(function(input, output, session) {
                     value = model$concepts$concept_id[RowNum])
     updateTextInput(session, "conceptDesc",
                     value = model$concepts$description[RowNum])
-    updateTextInput(session, "conceptGroup",
-                    value = model$concepts$group[RowNum])
+    updateTextInput(session, "conceptCategory",
+                    value = model$concepts$category[RowNum])
   }
   
   #Function to update relation form causal and affected variables -- the rest updates based on other observes
@@ -258,7 +258,7 @@ shinyServer(function(input, output, session) {
       model$concepts$name[1] <- input$conceptName
       model$concepts$concept_id[1] <- input$conceptID
       model$concepts$description[1] <- input$conceptDesc
-      model$concepts$group[1] <- input$conceptGroup
+      model$concepts$category[1] <- input$conceptCategory
       RowNum <- input$conceptsTableEditing_rows_selected
       updateConceptForm(RowNum)
     }
@@ -275,7 +275,7 @@ shinyServer(function(input, output, session) {
         # Update model concepts corresponding to that ID
         model$concepts[idx,"name"] <- input$conceptName
         model$concepts[idx,"description"] <- input$conceptDesc
-        model$concepts[idx, "group"] <- input$conceptGroup
+        model$concepts[idx, "category"] <- input$conceptCategory
       } else {
         # If not, update everything based on the row selected
         
@@ -284,7 +284,7 @@ shinyServer(function(input, output, session) {
         model$concepts$name[RowNum] <- input$conceptName
         model$concepts$concept_id[RowNum] <- input$conceptID
         model$concepts$description[RowNum] <- input$conceptDesc
-        model$concepts$group[RowNum] <- input$conceptGroup
+        model$concepts$category[RowNum] <- input$conceptCategory
       }
 
       model$status$lastedit <- as.character(Sys.time())

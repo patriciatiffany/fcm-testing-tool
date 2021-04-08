@@ -1,6 +1,6 @@
 #helper.R
-# Author: Patricia Angkiriwang, University of British Columbia; 
-# based on code by Brian Gregor, Oregon Systems Analytics LLC
+# Author: Patricia Angkiriwang, University of British Columbia - 2019-2021 
+# with code initially adapted from FSDM, an open-source R Shiny app by Brian Gregor, Oregon Systems Analytics LLC
 
 # === LOAD RESOURCES ==================
 # Packages
@@ -34,7 +34,7 @@ shinyUI(
                p("The direction of each edge (i.e. the direction of the arrow) specifies the relationship between causal and affected concepts. Edge weights specify the strength (Very Low to Very High) and directionality (+ or -) of causal effects."), # A positive sign for an edge weight means that an increase in the causing concept causes an increase in the affected concept."),
                hr(),
                h4("Credits"),
-               p("This application was loosely built based on The Logic Laboratory, an open-source R Shiny application developed by Brian Gregor (Oregon Systems Analytics), 2016.")
+               p("This application was loosely built based on The Logic Laboratory (FSDM), an open-source R Shiny application developed by Brian Gregor (Oregon Systems Analytics), 2016.")
              )
     ),
     # User Info -------------------
@@ -95,7 +95,7 @@ shinyUI(
                                       # textInput("minValue", "Minimum Value"),
                                       # textInput("maxValue", "Maximum Value"),
                                       # textareaInput("valuesDesc", "Values Description (optional)"),
-                                      textInput("conceptGroup", "Category"),
+                                      textInput("conceptCategory", "Category"),
                                       conditionalPanel(
                                         condition = "input.modelAction != 'runModel'",
                                         wellPanel(
