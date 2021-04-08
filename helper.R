@@ -4,6 +4,16 @@
 
 # Note: the templates folder in the models folder needs to exist
 
+notify <- function(message, type="message"){
+  showNotification(
+    ui = message,
+    duration = 2, 
+    closeButton = TRUE,
+    type = type
+  )
+}
+
+
 # === INITIALIZING, LOADING, AND SAVING MODELS ==================
 
 #----------------------
@@ -33,7 +43,11 @@ initializeNewModel <- function(modelName, authorName) {
     return(NULL)
   }
   #Create directory for model
-  newDir <-  file.path("models", modelName)
+  newDir <-  file.path(".", "models", modelName)
+  if (dir.exists(newDir)){
+    notify(paste(newDir, "already exists. Please choose another name."), type="error")
+    return(NULL)
+  }
   dir.create(newDir)
   #Create and save a status list
   attribution <- 
@@ -47,10 +61,10 @@ initializeNewModel <- function(modelName, authorName) {
   writeLines(toJSON(status_ls), file.path(newDir, "status.json"))
   #Copy and save the concept and relations template files
   file.copy(
-    file.path("models/templates/concepts.json"), newDir
+    file.path("./models/templates/concepts.json"), newDir
   )
   file.copy(
-    file.path("models/templates/relations.json"), newDir
+    file.path("./models/templates/relations.json"), newDir
   )
   #Create scenarios directory if does not exist
   scenarioPath <- file.path(newDir, "scenarios")
@@ -82,7 +96,7 @@ initializeNewModel <- function(modelName, authorName) {
 #' @return a list containing values for name, parent, created, and lastedit.
 #' @export
 loadModelStatus <- function(modelName, authorName = NULL){
-  dir <-  file.path("models", modelName)
+  dir <-  file.path(".", "models", modelName)
   status_ls <- as.list(fromJSON(file.path(dir, "status.json")))
   if (!is.null(authorName)) {
     attribution <- 
@@ -108,7 +122,7 @@ loadModelStatus <- function(modelName, authorName = NULL){
 #' @return a data frame containing the model concept information.
 #' @export
 loadModelConcepts <- function(modelName){
-  dir <-  file.path("models", modelName)
+  dir <-  file.path(".", "models", modelName)
   fromJSON(file.path(dir, "concepts.json"))
 }
 
@@ -127,9 +141,32 @@ loadModelConcepts <- function(modelName){
 #' @return a data frame containing the model relations information.
 #' @export
 loadModelRelations <- function(modelName){
-  dir <-  file.path("models", modelName)
+  dir <-  file.path(".", "models", modelName)
   fromJSON(file.path(dir, "relations.json"), simplifyDataFrame = FALSE)
 }
+
+#--------------------------------#
+# Load Weight Values File
+#--------------------------------#
+#' Load the weight values saved for this model
+#'
+#' \code{loadWeightValues} reads the file that contains weight values and returns a named vector
+#'
+#' This function reads the weight values file for a specified model and 
+#' returns a named vector containing the information.
+#'
+#' @param modelName a string representation of the model name.
+#' @return a named vector that specifies how to convert qualitative to quantitative weights
+#' @export
+loadWeightValues <- function(modelName){
+  dir <-  file.path(".", "models", modelName)
+  if (file.exists(file.path(dir, "weight_vals.json"))){
+    unlist(fromJSON(file.path(dir, "weight_vals.json")))
+  } else {
+    NULL
+  }
+}
+
 
 #--------------------------------#
 # Save All Model Components
@@ -150,10 +187,11 @@ loadModelRelations <- function(modelName){
 #' @export
 saveModel <- function(modelData) {
   modelName <- modelData$status$name
-  dir <- file.path("models", modelName)
+  dir <- file.path(".", "models", modelName)
   writeLines(prettify(toJSON(modelData$status, auto_unbox=TRUE)), file.path(dir, "status.json"))
   writeLines(prettify(toJSON(modelData$concepts, auto_unbox=TRUE)), file.path(dir, "concepts.json"))
   writeLines(prettify(toJSON(modelData$relations, auto_unbox=TRUE)), file.path(dir, "relations.json"))
+  writeLines(prettify(toJSON(as.list(modelData$weight_vals), auto_unbox=TRUE)), file.path(dir, "weight_vals.json"))
 }
 
 

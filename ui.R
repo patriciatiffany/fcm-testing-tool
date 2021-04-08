@@ -49,7 +49,7 @@ shinyUI(
                checkboxInput("anonymous", "Keep me anonymous", FALSE)
              )
     ),
-    tabPanel( "1) The Model",
+    tabPanel( "1) Model Setup",
               navbarPage("Set up your model",
               # Model upload -------------------
                          tabPanel( "Upload model",
@@ -168,6 +168,8 @@ shinyUI(
                                            label = "Numerical value",
                                            min=0, max=1, step = 0.05, value = 1),
                                actionButton("updateWeight", "Update"),
+                               hr(),
+                               actionButton("saveModel3","Save Model")
                              ),
                              mainPanel(
                                tableOutput("weightsTable")
@@ -275,37 +277,39 @@ shinyUI(
                                   p("Launch multiple runs, each with a constraint added (choices override any constraints set in the sidebar)"),
                                   uiOutput("conceptsForScenarios"),
                                   actionButton("runFCMMultipleConstraints", "Launch runs and save to scenario list for comparison")
-                         ), # tabPanel: Parameter Sweep
-                          tabPanel("Compare Scenarios",
-                                   br(),
-                                   h4("Scenario comparison views"),
-                                   fluidRow(
-                                     column(7, uiOutput("scenariosToPlot")),
-                                     column(5, actionButton("resetScenarios", "Reset scenario list"),hr(),
-                                            fileInput("scenFileToLoad", label="Load a saved set of scenarios"), accept=".Rmd")
-                                   ),
-                                   actionButton("launchScenarioView", "Launch scenario comparison view"),
-                                   hr(),
-                                   br(),
-                                   uiOutput('selectScenarioYVar'),
-                                   br(),
-                                   conditionalPanel(condition="input.scenarioPlotY != 'value'",
-                                                    span( textOutput('scenarioPlotWarning'), style="color:red")),
-                                   plotOutput(outputId = "scenarioPlot", height = "650px"), #plotlyOutput
-                                   hr(),
-                                   plotOutput(outputId = "scenarioPlotBars", height = "650px"),
-                                   hr(),
-                                   plotOutput(outputId = "scenarioPlotSlope", height = "650px"),
-                                   hr(),
-                                   fluidRow(
-                                     column(6, textInput("scenFileName", label="File Name", value="saved_scenarios.Rmd"),
-                                            actionButton("saveScenarios", "Save these scenarios for later")),
-                                     column(6,textInput("scenDataFileName", label="File Name", value="scenario_comparison_data.Rmd"),
-                                            actionButton("saveScenarioData", "Save the comparison results as a data frame"))
-                                   ), br()
-                           ) # tabPanel: Compare Scenarios
+                         ) # tabPanel: Parameter Sweep
                  ) # tabsetPanel
                ) # mainPanel
              ) # sidebarLayout
-    ) # tab (2 - fcm)
+    ), # tab (2 - fcm)
+    tabPanel("3) Compare Scenario Results",
+             mainPanel(
+               br(),
+               h4("Scenario comparison views"),
+               fluidRow(
+                 column(7, uiOutput("scenariosToPlot")),
+                 column(5, actionButton("resetScenarios", "Reset scenario list"),hr(),
+                        fileInput("scenFileToLoad", label="Load a saved set of scenarios"), accept=".Rmd")
+               ),
+               actionButton("launchScenarioView", "Launch scenario comparison view"),
+               hr(),
+               br(),
+               uiOutput('selectScenarioYVar'),
+               br(),
+               conditionalPanel(condition="input.scenarioPlotY != 'value'",
+                                span( textOutput('scenarioPlotWarning'), style="color:red")),
+               plotOutput(outputId = "scenarioPlot", height = "650px"), #plotlyOutput
+               hr(),
+               plotOutput(outputId = "scenarioPlotBars", height = "650px"),
+               hr(),
+               plotOutput(outputId = "scenarioPlotSlope", height = "650px"),
+               hr(),
+               fluidRow(
+                 column(6, textInput("scenFileName", label="File Name", value="saved_scenarios"),
+                        actionButton("saveScenarios", "Save these scenarios for later")),
+                 column(6,textInput("scenDataFileName", label="File Name", value="scenario_comparison_data"),
+                        actionButton("saveScenarioData", "Save the comparison results as a data frame"))
+               ), br()
+        ) # mainPanel
+    ) # tab: 3 - Compare Scenarios
   )) # shinyUI, navbarPage

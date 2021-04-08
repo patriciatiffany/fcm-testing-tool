@@ -202,30 +202,28 @@ shinyServer(function(input, output, session) {
         model$status <- loadModelStatus(input$modelFileName, ModelAuthor())
         model$concepts <- loadModelConcepts(input$modelFileName)
         model$relations <- loadModelRelations(input$modelFileName) 
+        weight_vals_loaded <- loadWeightValues(input$modelFileName)
+        if (is.null(weight_vals_loaded)){
+          model$weight_vals <- weight_vals_default
+        } else {
+          model$weight_vals <- weight_vals_loaded
+        }
         #View(model$relations)
-        startmessage <- "Model loaded from /models folder"
+        notify("Model loaded from /models folder")
         
       } # end if input$modelAction 
       
       if(input$modelAction == "create_new"){
         model$status <- initializeNewModel(input$newModelFileName, ModelAuthor())
         if (is.null(model$status)){
-          startmessage <- "Model initialization failed. Please enter a model name-- this will be the name of the new directory created"
+          notify("Model initialization failed. Please enter a new model name-- this will be the name of the new directory created", type="error")
         } else {
           model$concepts <- loadModelConcepts(input$newModelFileName)
           model$relations <- loadModelRelations(input$newModelFileName) 
           
-          startmessage <- "New model created from /models/templates"
+          notify("New model created from /models/templates")
         }
       }
-      
-      showNotification(
-        ui = startmessage,
-        duration = 2, 
-        closeButton = TRUE,
-        type = "message"
-      )
-      
       updateConceptForm(1)
       updateRelationForm(1)
       saveLastState()
@@ -369,16 +367,11 @@ shinyServer(function(input, output, session) {
   
   # Notification when model saved ---------
   observeEvent(
-    c(input$saveModel1,input$saveModel2),
+    c(input$saveModel1,input$saveModel2,input$saveModel3),
     {
       if (!is.null(model$status$name)){
         saveModel(model)
-        showNotification(
-          ui = "All updates have been saved in the /models folder",
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("All updates have been saved in the /models folder")
       }
     })
   
@@ -703,12 +696,7 @@ shinyServer(function(input, output, session) {
     input$runFCMAction,
     {
       if (is.null(model$relations)){
-        showNotification(
-          ui = "No model loaded. Please load a model before proceeding.",
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("No model loaded. Please load a model before proceeding.", type="warning")
       } else{
         run$parameters <- run_params()
         run$results <- run_model(model, run$parameters, run$constraints, encode = TRUE)
@@ -763,12 +751,7 @@ shinyServer(function(input, output, session) {
     input$runFCMSweepAction,
     {
       if (is.null(model$relations)){
-        showNotification(
-          ui = "No model loaded. Please load a model before proceeding.",
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("No model loaded. Please load a model before proceeding.", type="warning")
       } else{
         
         sweep <- run_parameter_sweep(model, isolate(run_params()), isolate(run$constraints), 
@@ -798,12 +781,7 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$runFCMMultipleConstraints,     {
       if (is.null(model$relations)){
-        showNotification(
-          ui = "No model loaded. Please load a model before proceeding.",
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("No model loaded. Please load a model before proceeding.", type="warning")
       } else{
         newScenarios <- run_auto_scenarios(model, run_params(), isolate(input$conceptsForScenarios), lowVal = clampSliderMin())
         
@@ -813,12 +791,7 @@ shinyServer(function(input, output, session) {
           scenarios$parameters[[scenName]] <- newScenarios$parameters[[scenName]]
         }
         
-        showNotification(
-          ui = paste0("Set of runs (high/ low for each concept) saved to scenario comparison list"),
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify(paste0("Set of runs (high/ low for each concept) saved to scenario comparison list"))
         run$constraints <- c() # clear constraints again
       }
     })
@@ -830,19 +803,9 @@ shinyServer(function(input, output, session) {
     input$addScenario,{
       
       if (is.null(model$relations)){
-        showNotification(
-          ui = "No model loaded. Please load a model before proceeding.",
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("No model loaded. Please load a model before proceeding.", type="warning")
       } else if (is.null(run$results)){
-        showNotification(
-          ui = paste0("Please run the model before proceeding."),
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("Please run the model before proceeding.", type="warning")
       } else {
         scenarios$results[[input$scenarioName]] <- run$results 
         if (length(run$constraints)>0){
@@ -852,12 +815,7 @@ shinyServer(function(input, output, session) {
         }
         scenarios$parameters[[input$scenarioName]] <- run$parameters
         
-        showNotification(
-          ui = paste0("Current run saved to scenario comparison list \n (", input$scenarioName, ")"),
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify(paste0("Current run saved to scenario comparison list \n (", input$scenarioName, ")"))
       }
     }
   )
@@ -866,19 +824,9 @@ shinyServer(function(input, output, session) {
   observeEvent(
     input$addSweep,{
       if (is.null(model$relations)){
-        showNotification(
-          ui = "No model loaded. Please load a model before proceeding.",
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("No model loaded. Please load a model before proceeding.", type="warning")
       } else if (length(run$sweep_results)==0){
-        showNotification(
-          ui = paste0("Please run before proceeding."),
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("Please run the model before proceeding.", type="warning")
       } else {
         
         if (length(run$sweep_constraints)>0){
@@ -894,12 +842,7 @@ shinyServer(function(input, output, session) {
           scenarios$constraints[[scenName]] <- constraints
           scenarios$parameters[[scenName]] <- run$parameters
         }
-        showNotification(
-          ui = paste0("Runs saved to scenario comparison list"),
-          duration = 2, 
-          closeButton = TRUE,
-          type = "message"
-        )
+        notify("Runs saved to scenario comparison list")
       }
     }
   )
@@ -930,14 +873,11 @@ shinyServer(function(input, output, session) {
       scenarios_save <- list(results = scenarios$results, 
                              constraints = scenarios$constraints, 
                              parameters = scenarios$parameters)
-      saveRDS(scenarios_save, file = input$scenFileName)
       
-      showNotification(
-        ui = paste("File saved:", input$scenFileName),
-        duration = 2, 
-        closeButton = TRUE,
-        type = "message"
-      )
+      saveDir <- file.path("models", model$status$name, "scenarios")
+      saveRDS(scenarios_save, file = file.path(saveDir, paste0(input$scenFileName,".Rmd")))
+      
+      notify(paste("File saved in", saveDir))
     }
   )
   
@@ -1107,15 +1047,18 @@ shinyServer(function(input, output, session) {
     }
   )
   
+  # Notification when scenarios empty but view is launched -----------
+  observeEvent(input$launchScenarioView,{
+    if (length(input$scenariosToPlot)==0 || length(scenarios$results)==0){
+      notify("No scenarios loaded. Load a model and some scenarios to compare before proceeding.", type="warning")
+    }
+  })
+  
   # Notification when scenario comparison data saved -------------------- 
   observeEvent(input$saveScenarioData,{
-    saveRDS(scenarioComparison(), file = input$scenDataFileName)
-    showNotification(
-      ui = paste("File saved:", input$scenDataFileName),
-      duration = 2, 
-      closeButton = TRUE,
-      type = "message"
-    )
+    saveDir <- file.path("models", model$status$name, "analysis")
+    saveRDS(scenarioComparison(), file = file.path(saveDir, paste0(input$scenDataFileName,".Rmd")))
+    notify(paste("File saved in", saveDir))
   })
   
   output$selectScenarioYVar <- renderUI({
