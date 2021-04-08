@@ -25,7 +25,7 @@ loadModelStatus <- function(modelName, authorName = NULL){
   status_ls <- as.list(fromJSON(file.path(dir, "status.json")))
   if (!is.null(authorName)) {
     attribution <- 
-      paste0("Model: ", modelName, "   Author: ", authorName, "   Edited: ", as.character(Sys.time()))
+      paste0("Model: ", modelName, " | Author: ", authorName, " | Edited: ", as.character(Sys.time()))
     status_ls$attribution <- c(attribution, status_ls$attribution)
     status_ls$notes <- status_ls$notes
   }

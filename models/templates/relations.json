@@ -1,24 +1,25 @@
 [
   {
-      "concept_id": "",
-      "k": "",
-      "affected_by": [
+    "concept_id": "",
+    "k": "",
+    "affected_by": [
+      {
+        "links": [
           {
-              "links": [
-                  {
-                      "concept_id": "",
-                      "direction": "",
-                      "weight": ""                    },
-                  {
-                      "concept_id": "",
-                      "direction": "",
-                      "weight": ""
-                  }
-              ],
-              "type": "",
-              "description": ""
+            "concept_id": "",
+            "direction": "",
+            "weight": ""
+          },
+          {
+            "concept_id": "",
+            "direction": "",
+            "weight": ""
           }
-      ]
+        ],
+        "type": "",
+        "description": ""
+      }
+    ]
   }
 ]         
 

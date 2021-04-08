@@ -73,7 +73,8 @@ shinyUI(
                                      mainPanel(
                                        tabsetPanel(
                                          tabPanel("Concepts", hr(),DT::dataTableOutput("conceptsTable"), value = "concepts_table"),
-                                         tabPanel("Relations", hr(), DT::dataTableOutput("relationsTable"), value = "relations_table"))
+                                         tabPanel("Relations", hr(), DT::dataTableOutput("relationsTable"), value = "relations_table"),
+                                         tabPanel("Model save history", hr(), verbatimTextOutput(outputId = "modelStatusDisplay"))),
                                      )
                                    ) # sidebarLayout
                          ), # tabPanel: upload model 

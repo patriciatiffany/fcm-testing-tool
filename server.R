@@ -189,12 +189,17 @@ shinyServer(function(input, output, session) {
     return(author)
   })
   
+  # Render model status for UI display ---------------
+  output$modelStatusDisplay <- renderPrint({
+    model$status
+  })
+  
   # Choose model start option and initialize model -----------------
   observeEvent(
     input$startModeling,
     {
       if(input$modelAction == "select_existing") { 
-        model$status <- loadModelStatus(input$modelFileName)
+        model$status <- loadModelStatus(input$modelFileName, ModelAuthor())
         model$concepts <- loadModelConcepts(input$modelFileName)
         model$relations <- loadModelRelations(input$modelFileName) 
         #View(model$relations)
