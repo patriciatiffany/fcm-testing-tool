@@ -44,9 +44,13 @@ shinyUI(
                hr(),
                p("The user information entered below is used to attribute model creation and editing."),
                textInput("firstName", "First Name"),
+               bsTooltip(id = "firstName", placement = "right", title = "Enter your first name"),
                textInput("lastName", "Last Name"),
+               bsTooltip(id = "lastName", placement = "right", title = "Enter your last name"),
                textInput("organization", "Organization (optional)"),
-               checkboxInput("anonymous", "Keep me anonymous", FALSE)
+               bsTooltip(id = "organization", placement = "right", title = "Enter your affiliation"),
+               checkboxInput("anonymous", "Keep me anonymous", FALSE),
+               bsTooltip(id = "anonymous", placement = "right", title = 'This uses "Anonymous" in lieu of your name and organization'),
              )
     ),
     tabPanel( "1) Model Setup",
@@ -64,16 +68,19 @@ shinyUI(
                                        ),
                                        conditionalPanel(
                                          condition = "input.modelAction == 'select_existing'",
-                                         uiOutput("selectExistingModelFile")
+                                         uiOutput("selectExistingModelFile"),
+                                         bsTooltip(id = "selectExistingModelFile", title = "These are the models that exist in the /models folder")
+                                         
                                        ),
                                        conditionalPanel(
                                          condition = "input.modelAction == 'create_new'",
-                                         textInput("newModelFileName", "Model Name", "")
+                                         textInput("newModelFileName", "Model Name", ""),
+                                         bsTooltip(id = "newModelFileName", title = "This will be name of the folder in which your new model will be stored. Pick a unique name.")
                                        ),
                                        actionButton("startModeling", "Start Working on Model"),
-                                       bsAlert("nofileAlert"),
-                                       bsAlert("nonameAlert"),
-                                       bsAlert("duplicateAlert")
+                                       bsTooltip(id = "startModeling", placement = "right", title = "Click here to initialize the model"),
+                                       bsAlert("noModelName"),
+                                       bsAlert("duplicateModelName")
                                      ),
                                      mainPanel(
                                        tabsetPanel(
@@ -90,31 +97,39 @@ shinyUI(
                                       h4("Edit Concepts"),
                                       hr(),
                                       textInput("conceptName", "Concept Name"),
+                                      bsTooltip(id = "conceptName", placement = "right", title = "What is this concept?"),
                                       textInput("conceptID", "ID (one-word identifier)"),
+                                      bsTooltip(id = "conceptID", placement = "right", title = "Enter a unique ID for this concept (A-Z, no spaces)"),
                                       textareaInput("conceptDesc", "Concept Description (optional)"),
+                                      bsTooltip(id = "conceptDesc", placement = "right", title = "Add extra notes and clarifications here"),
                                       # textInput("minValue", "Minimum Value"),
                                       # textInput("maxValue", "Maximum Value"),
                                       # textareaInput("valuesDesc", "Values Description (optional)"),
-                                      textInput("conceptCategory", "Category"),
+                                      textInput("conceptCategory", "Category (optional)"),
+                                      bsTooltip(id = "conceptCategory", placement = "right", title = "The category this concept belongs to"),
                                       conditionalPanel(
                                         condition = "input.modelAction != 'runModel'",
                                         wellPanel(
-                                          actionButton("addConcept", "New"),
+                                          actionButton("addConcept", "Add"),
+                                          bsTooltip(id = "addConcept", title = "Adds as new concept"),
                                           actionButton("updateConcept", "Update"),
+                                          bsTooltip(id = "updateConcept", title = "Updates the concept matching this ID (or, if entering a new ID, updates the highlighted concept)"),
                                           actionButton("deleteConcept", "Delete"),
+                                          bsTooltip(id = "deleteConcept", title = "Deletes highlighted concept"),
                                           actionButton("undoConceptAction", "Undo"),
-                                          bsAlert(
-                                            "duplicateConceptName"
-                                          ),
+                                          bsTooltip(id = "undoConceptAction", title = "Toggles last action"),
                                           bsAlert(
                                             "duplicateConceptVariable"
                                           )
                                         ),
-                                        actionButton("saveModel1","Save Model")
+                                        actionButton("saveModel1","Save Model"),
+                                        bsTooltip(id = "saveModel1", placement = "right", title = "Saves all edits to the /models folder (including any changes on other tabs)")
                                       ) #end: conditionalPanel
                                     ),
                                     mainPanel(
-                                      tabPanel("Concepts", DT::dataTableOutput("conceptsTableEditing"), value = "table")
+                                      tabPanel("Concepts", DT::dataTableOutput("conceptsTableEditing"), value = "table"),
+                                      br(),
+                                      p("Note: Highlight/ select concepts by clicking the rows in the table")
                                     )
                                   )
                                   
@@ -125,33 +140,51 @@ shinyUI(
                                       h4("Edit Relationships"),
                                       hr(),
                                       uiOutput("selectCausalConcept"),
+                                      bsTooltip(id = "selectCausalConcept", placement = "right", title = 'Concept causing the influence'),
                                       uiOutput("selectAffectedConcept"),
+                                      bsTooltip(id = "selectAffectedConcept", placement = "right", title = 'Concept receiving the influence'),
                                       selectInput(inputId = "causalDirection", 
-                                                  label = "Causal Direction", 
+                                                  label = "Direction", 
                                                   choices = c("" ,"Positive", "Negative")),
+                                      bsTooltip(id = "causalDirection", placement = "right", title = "Is this a positive (+) or negative (-) influence?"),
                                       selectInput(inputId = "causalStrength", 
-                                                  label = "Causal Strength", 
+                                                  label = "Strength (Weight)", 
                                                   choices = c("", "VL", "L", "ML", "M", "MH", "H", "VH")),
+                                      bsTooltip(id = "causalStrength", placement = "right", title = 'What is the strength of this influence? ("Very Low" to "Very High")'),
+                                      textareaInput("causalDesc", "Description"),
+                                      bsTooltip(id = "causalDesc", placement = "right", title = "Add extra notes and clarifications here"),
                                       hr(), 
+                                      p("Properties concerning the affected concept:"),
+                                      br(),
                                       sliderInput(inputId = "relK", label = "Inertia of affected concept (k)",
                                                   min=0, max=1, step = 0.1, value = 1),
-                                      selectInput(inputId = "relType", label = "Logical conjunction (Type)",
+                                      bsTooltip(id = "relK", placement = "right", title = "To what extent is the affected concept influenced by its previous value?"),
+                                      selectInput(inputId = "relType", label = "Relational aggregation (Type)",
                                                   choices = c("ADD"="add","REQ"="req")),
-                                      numericInput(inputId = "relGrouping", label = "Relation group number", value = 1),
-                                      textareaInput("causalDesc", "Causal Description"),
+                                      bsTooltip(id = "relType", title = "How should the influences affecting this concept be aggregated? Are they additive (ADD)? Are they all required to cause an effect (REQ)?<br><br>Note that changing this will modify the type of all relationships influencing the affected concept"),
+                                      # - The following references to relation "groups" are commented out, as multiple aggregation types (groups) per affected concept are still unsupported
+                                      # bsTooltip(id = "relType", title = "How should the influences affecting this concept be aggregated? Are they additive (ADD)? Are they all required to cause an effect (REQ)?<br><br>Note that changing this will change all relationships in the same group"),
+                                      # numericInput(inputId = "relGrouping", label = "[ Relation group number ]", value = 1),
+                                      # bsTooltip(id = "relGrouping", title = "(Auto-completes) An ID assigned to each group of influences affecting this concept, each with a common relation type"),
                                       conditionalPanel(
                                         condition = "input.modelAction != 'runModel'",
                                         wellPanel(
                                           #actionButton("addRelation", "New"), #inactive - currently, all assumed to have something
                                           actionButton("updateRelation", "Add/ Update"),
+                                          bsTooltip(id = "updateRelation", title = "Updates properties corresponding to this relationship, and adds the relation if it does not yet exist"),
                                           actionButton("deleteRelation", "Delete"),
-                                          actionButton("undoRelationAction", "Undo")
+                                          bsTooltip(id = "deleteRelation", title = "Removes this relationship"),
+                                          actionButton("undoRelationAction", "Undo"),
+                                          bsTooltip(id = "undoRelationAction", title = "Toggles last action")
                                         ), # end: wellPanel
-                                        actionButton("saveModel2","Save Model")
+                                        actionButton("saveModel2","Save Model"),
+                                        bsTooltip(id = "saveModel2", placement = "right", title = "Saves all edits to the /models folder (including any changes on other tabs)")
                                       ) #end: conditionalPanel
                                     ), # sidebarPanel
                                     mainPanel(
-                                      tabPanel("Relations", DT::dataTableOutput("relationsTableEditing"), value = "relations_edit")
+                                      tabPanel("Relations", DT::dataTableOutput("relationsTableEditing"), value = "relations_edit"),
+                                      br(),
+                                      p("Note: Highlight/ select relationships by clicking the rows in the table")
                                     ) #mainPanel
                                   ) # sidebarLayout
                          ), # tabPanel: edit relationships
@@ -161,15 +194,19 @@ shinyUI(
                                h4("Edit numerical values for edge weights"),
                                hr(),
                                selectInput(inputId = "qualWeight", 
-                                           label = "Qualitative Causal Strength", 
+                                           label = "Qualitative Strength of Influence", 
                                            choices = c("", "VL", "L", "ML", "M", "MH", "H", "VH"),
                                            selected = "M"),
+                               bsTooltip(id = "qualWeight", placement = "right", title = "Select the weight to modify"),
                                sliderInput(inputId = "quantWeight",
                                            label = "Numerical value",
                                            min=0, max=1, step = 0.05, value = 1),
+                               bsTooltip(id = "quantWeight", placement = "right", title = "What numerical value should this strength correspond to?"),
                                actionButton("updateWeight", "Update"),
+                               bsTooltip(id = "updateWeight", placement = "right", title = "Update weight pairing"),
                                hr(),
-                               actionButton("saveModel3","Save Model")
+                               actionButton("saveModel3","Save Model"),
+                               bsTooltip(id = "saveModel3", placement = "right", title = "Saves all edits to the /models folder (including any changes on other tabs)")
                              ),
                              mainPanel(
                                tableOutput("weightsTable")

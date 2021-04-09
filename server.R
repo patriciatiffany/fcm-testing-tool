@@ -214,9 +214,16 @@ shinyServer(function(input, output, session) {
       } # end if input$modelAction 
       
       if(input$modelAction == "create_new"){
+        if (input$newModelFileName == ""){
+          createAlert(session, anchorId="noModelName", append=FALSE,
+                      content="Please enter a new model name-- this will be the name of the new directory created")
+          return()
+        }
+        
         model$status <- initializeNewModel(input$newModelFileName, ModelAuthor())
         if (is.null(model$status)){
           notify("Model initialization failed. Please enter a new model name-- this will be the name of the new directory created", type="error")
+          return()
         } else {
           model$concepts <- loadModelConcepts(input$newModelFileName)
           model$relations <- loadModelRelations(input$newModelFileName) 
@@ -392,7 +399,7 @@ shinyServer(function(input, output, session) {
   output$selectCausalConcept <- renderUI({
     selectInput(
       inputId = "causalConcept",
-      label = "Causal Concept",
+      label = "Influencing Concept (From)",
       choices = sort(model$concepts$concept_id)
       #choices = sort(model$concepts$name)
     )
@@ -401,7 +408,7 @@ shinyServer(function(input, output, session) {
   output$selectAffectedConcept <- renderUI({
     selectInput(
       inputId = "affectedConcept",
-      label = "Affected Concept",
+      label = "Affected Concept (To)",
       choices = sort(model$concepts$concept_id)
       #choices = sort(model$concepts$name)
     )
@@ -445,8 +452,8 @@ shinyServer(function(input, output, session) {
                             value = selectedfx$strength[selectedfx$to == input$affectedConcept])
             updateTextInput(session, "causalDesc",
                             value = selectedfx$description[selectedfx$to == input$affectedConcept])
-            updateTextInput(session, "relGrouping",
-                            value = selectedfx$grouping[selectedfx$to == input$affectedConcept])
+            # updateTextInput(session, "relGrouping",
+            #                 value = selectedfx$grouping[selectedfx$to == input$affectedConcept])
             updateTextInput(session, "relK",
                             value = selectedfx$k[selectedfx$to == input$affectedConcept])
             updateTextInput(session, "relType",
@@ -487,8 +494,8 @@ shinyServer(function(input, output, session) {
                         value = selectedfx$strength[selectedfx$to == input$affectedConcept])
         updateTextInput(session, "causalDesc",
                         value = selectedfx$description[selectedfx$to == input$affectedConcept])
-        updateTextInput(session, "relGrouping",
-                        value = selectedfx$grouping[selectedfx$to == input$affectedConcept])
+        # updateTextInput(session, "relGrouping",
+        #                 value = selectedfx$grouping[selectedfx$to == input$affectedConcept])
         updateTextInput(session, "relK",
                         value = selectedfx$k[selectedfx$to == input$affectedConcept])
         updateTextInput(session, "relType",
