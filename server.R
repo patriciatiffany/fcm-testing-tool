@@ -807,6 +807,14 @@ shinyServer(function(input, output, session) {
       }
     })
   
+  # Run monte carlo simulation ------------
+  observeEvent(
+    input$launchMonteCarlo, {
+      mc_list <- run_monte_carlo(model, isolate(run_params()), isolate(run$constraints))
+      parse_monte_carlo(mc_list)
+    }
+  )
+  
   # === SCENARIO SAVE/ LAUNCH COMPARISON VIEW --------- ====================================================
   
   # Add current run to scenario comparison view ----

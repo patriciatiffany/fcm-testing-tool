@@ -339,7 +339,11 @@ shinyUI(
                                   bsTooltip(id ="selectConceptsForScenarios", title="Choose concepts for which you would like to test high/low scenarios"),
                                   actionButton("runFCMMultipleConstraints", "Launch runs and save to scenario list for comparison"),
                                   bsTooltip(id ="runFCMMultipleConstraints", title="Runs and saves these results to tab (3) Compare Scenario Results")
-                         ) # tabPanel: Parameter Sweep
+                         ), # tabPanel: Parameter Sweep
+                         tabPanel("Run Monte Carlo",
+                                  br(),
+                                  actionButton('launchMonteCarlo', 'Launch Monte Carlo simulation')
+                         ) # tabPanel: Monte Carlo
                  ) # tabsetPanel
                ) # mainPanel
              ) # sidebarLayout
@@ -390,7 +394,9 @@ shinyUI(
                  ), # tab: other views
                 tabPanel("Using Monte Carlo for baseline",
                   br(),
-                  p("Explanation here, TBC")
+                  p("Explanation here, TBC"),
+                  # actionButton('launchMonteCarlo', 'Launch Monte Carlo simulation')
+                  # Note: this doesn't actually work here! because it requires params to be present as input
                  )
               ),
                hr(),

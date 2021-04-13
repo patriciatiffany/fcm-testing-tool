@@ -302,7 +302,7 @@ formatRelationTable <- function(relations_ls,concepts_df,export=FALSE,use.full.n
 # Make an Adjacency Matrix from a Relations List
 #----------------------------------------------#
 #' Creates an adjacency matrix 
-#' \code{makeAdjacencyMatrix} creates a set  of adjacency matrices from a relations list
+#' \code{makeAdjacencyMatrices} creates a set  of adjacency matrices from a relations list
 #' 
 #' This function creates a list of adjacency matrices from a relations list. The
 #' adjacency matrix is a square matrix with as many rows and columns as the
@@ -314,7 +314,7 @@ formatRelationTable <- function(relations_ls,concepts_df,export=FALSE,use.full.n
 #' @param c_ids a vector of concepts in the system (usually model$concepts$ID)
 #' @return a list of adjacency matrices, one corresponding to each edge variable, and additional ones like "type" and "rel_group" that identify a group of related links
 #' @export
-makeAdjacencyMatrix <- function(relations_ls, c_ids) {
+makeAdjacencyMatrices <- function(relations_ls, c_ids) {
     # Get all the variables associated with the edges 
     # (names of columns in any links data frame except "concept_id")
     if (length(relations_ls) > 0){
@@ -407,6 +407,20 @@ adjMatrixCalc <- function(adj_mx_list, vals){
   return(adj_mx)
 }
 
+
+#---------------------------------------------------------------#
+# Define function to generate randomly weighted matrices
+#---------------------------------------------------------------#
+# Extract direction and create an adjacency matrix that of random weights --- take whatever is not NA (has a link) and assigns a random weight to it (with the right direction, though)
+adjMatrixRandom <- function(adj_mx_list, 
+                            randomizer = function(){runif(1, min=0.1, max=0.9)}){
+  signs <- c(Positive = 1, Negative = -1)    
+  adj_mx <- apply(adj_mx_list$weight, c(1,2), function(x){(!is.na(x))*randomizer()}) * apply(adj_mx_list$direction, 2, function(x) signs[x])
+  rownames(adj_mx) <- colnames(adj_mx)
+  adj_mx[is.na(adj_mx)] <- 0 # replace NAs with 0s 
+  return(adj_mx)
+}
+
 #---------------------------------------------------------------#
 # Define function to create a dot file for plotting with GraphViz
 #---------------------------------------------------------------#
@@ -451,8 +465,8 @@ makeDot <-
     
     #Make matrices of relations and labels
     Cn <- concepts_df$concept_id
-    adj_mx_ls <- makeAdjacencyMatrix(relations_ls, Cn)
-    adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls, weight_vals)
+    adj_mx_list <- makeAdjacencyMatrices(relations_ls, Cn)
+    adj_mx_list$weight_num <- adjMatrixCalc(adj_mx_list, weight_vals)
     #Create row and column indices for selected row and column groups
     if (RowGroup == "All") {
       Cr <- Cn
@@ -466,9 +480,9 @@ makeDot <-
     }
     #Select relations and labels matrices for selected rows and columns
     concepts_to_plot <- unique(Cr)
-    rels_to_plot <- adj_mx_ls$weight_num[Cr,Cc]
-    labels_to_plot <- adj_mx_ls$weight[Cr,Cc]
-    types_to_plot <- adj_mx_ls$type[Cr,Cc]
+    rels_to_plot <- adj_mx_list$weight_num[Cr,Cc]
+    labels_to_plot <- adj_mx_list$weight[Cr,Cc]
+    types_to_plot <- adj_mx_list$type[Cr,Cc]
     
     #Update Cr and Cc and identify unique concepts
     Cr <- rownames(rels_to_plot)
@@ -516,28 +530,40 @@ makeDot <-
 
 
 # === RUNNING THE MODEL ==================
-#---------------#
-# Run simulation
-#---------------#
-run_model <- function(model, params, constraints, encode=FALSE){
+
+# Generate matrix list from a model (weights correspond to weight values corresponding to qualitative weights, OR randomly assigned for monte carlo simulation)
+generate_matrices <- function(model, random=FALSE){
   relations_ls <- model$relations
   c_ids <- model$concepts$concept_id
-  adj_mx_ls <- makeAdjacencyMatrix(relations_ls, c_ids)
-  adj_mx_ls$weight_num <- adjMatrixCalc(adj_mx_ls, model$weight_vals)
   
+  adj_mx_list <- makeAdjacencyMatrices(relations_ls, c_ids)
+  if (random){
+    adj_mx_list$weight_num <- adjMatrixRandom(adj_mx_list)
+  } else{
+    adj_mx_list$weight_num <- adjMatrixCalc(adj_mx_list, model$weight_vals)
+  }
+  return(adj_mx_list)
+}
+
+#---------------#
+# Wrapper for FCM function
+#---------------#
+fcm_wrapper <- function(adj_mx_list, params, constraints=NULL, encode=FALSE){
+  # Collate constraints for simulation
   if (length(constraints)>0){
     scen <- list(var = names(constraints),
                  val = constraints)
   } else{
     scen <- list(var = NULL, val = NULL)
   }
-  
-  run <- fcm.run(adj_mx_ls$weight_num, adj_mx_ls$type, adj_mx_ls$rel_group, 
+  # Run the model from the matrix list, parameters, and constraints (if applicable)
+  c_ids <- colnames(adj_mx_list[[1]])
+  run <- fcm.run(adj_mx_list$weight_num, adj_mx_list$type, adj_mx_list$rel_group, 
                  cn = c_ids, iter = params$iter, k = params$k, init = params$init, 
                  infer_type = params$infer_type, h = params$h, lambda = params$lambda,
                  set.concepts = scen$var, set.values = scen$val)
   
-  if (encode){ # Do we want to appent parameter info in the data frame?
+  if (encode){ # Do we want to append parameter info in the data frame?
     run <- run %>% 
       mutate(infer_type = params$infer_type,
              h = params$h,
@@ -546,6 +572,31 @@ run_model <- function(model, params, constraints, encode=FALSE){
              timestep = seq.int(params$iter))
   }
   return(run)
+}
+
+#---------------#
+# Run simulation
+#---------------#
+run_model <- function(model, params, constraints = NULL, encode = FALSE, random=FALSE){
+  # Generate matrix list 
+  adj_mx_list <- generate_matrices(model, random=random)
+  # Run FCM
+  results <- fcm_wrapper(adj_mx_list, params, constraints, encode = encode)
+  return(results)
+}
+
+#---------------#
+# Run monte carlo simulation
+#---------------#
+run_monte_carlo <- function(model, params, constraints, mc_iterations = 100){
+  results = vector("list", mc_iterations)
+  for (i in 1:mc_iterations){
+    model_matrices <- generate_matrices(model, random=TRUE)
+    results[[i]] <- fcm_wrapper(model_matrices, params, constraints, encode = TRUE) %>% 
+      mutate(mc=i)
+  } # loop over monte carlo simulations
+  
+  return(results)
 }
 
 #------------#
@@ -567,9 +618,9 @@ run_parameter_sweep <- function(model, params, constraints, varying_params = c("
 
     for (i in 1:length(pvals)){
       params_run = replace(params, pn, pvals[i]) # store all parameters here, using the value in the parameter sweep
-      res <- run_model(model, params_run, constraints, encode = TRUE)
+      results <- run_model(model, params_run, constraints, encode = TRUE)
       sweep$params[[n]] <- params_run
-      sweep$results[[n]] <- res
+      sweep$results[[n]] <- results
       n <- n + 1
     }
   }
@@ -670,6 +721,28 @@ tidy_slope_graph <- function(joined_df){
     # mutate(scenario_type = if_else(scenario_type=="value", "modified scenario", scenario_type))
     
     return(new_df)
+}
+
+#-------------#
+# Parse monte carlo results
+#-------------#
+
+parse_monte_carlo <- function(mc_list){
+  df <- bind_rows(mc_list, .id="mc") #lapply(mc_list, function(x) x[nrow(x),])
+  print(df)
+  return(df)
+}
+
+
+
+# Unfinished
+plot_monte_carlo <- function(df){
+  ggplot(df %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = ~value, colour = ~scenario_name)) + 
+    geom_point(show.legend = TRUE) + facet_wrap(vars(concept)) + 
+    theme(panel.spacing.y = unit(2, "lines")) + theme_minimal() +
+    theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()) + 
+    geom_hline(yintercept = 0, color = "black")
 }
 
 # PLOTS =========================
