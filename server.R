@@ -536,7 +536,11 @@ shinyServer(function(input, output, session) {
       if ((length(ExistingAffected)>0) && (AffectedConcept %in% ExistingAffected)) {
             # Find where the new data should go
             a_idx <- which(ExistingAffected == AffectedConcept)
-            group_idx <- input$relGrouping
+            if (is.null(input$relGrouping)){
+              group_idx <- 1
+            } else {
+              group_idx <- input$relGrouping
+            }
             links <- model$relations[[a_idx]]$affected_by[[group_idx]]$links
             ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
             if (length(ExistingLinked)>0 && CausalConcept %in% ExistingLinked){
@@ -774,7 +778,7 @@ shinyServer(function(input, output, session) {
   )
   
   # Define UI element to select concepts to constrain for set of runs -----
-  output$conceptsForScenarios <- renderUI({
+  output$selectConceptsForScenarios <- renderUI({
     selectizeInput(
       inputId = "conceptsForScenarios",
       label = "Test high/low scenarios for these concepts",
@@ -855,7 +859,7 @@ shinyServer(function(input, output, session) {
   )
   
   # Define UI element to select scenarios to plot
-  output$scenariosToPlot <- renderUI({
+  output$selectScenariosToPlot <- renderUI({
     selectizeInput(
       inputId = "scenariosToPlot",
       label = "Compare these scenarios",
@@ -877,24 +881,51 @@ shinyServer(function(input, output, session) {
   # Save current scenarios into a file ----
   observeEvent(
     input$saveScenarios,{
-      scenarios_save <- list(results = scenarios$results, 
-                             constraints = scenarios$constraints, 
-                             parameters = scenarios$parameters)
-      
-      saveDir <- file.path("models", model$status$name, "scenarios")
-      saveRDS(scenarios_save, file = file.path(saveDir, paste0(input$scenFileName,".Rmd")))
-      
-      notify(paste("File saved in", saveDir))
+      if (length(scenarios$results > 0)){
+        scenarios_save <- list(results = scenarios$results, 
+                               constraints = scenarios$constraints, 
+                               parameters = scenarios$parameters)
+        
+        saveDir <- file.path("models", model$status$name, "scenarios")
+        if (input$scenFileName == ""){
+          notify("Please enter a file name", type = "warning")
+        } else {
+          saveRDS(scenarios_save, file = file.path(saveDir, paste0(input$scenFileName,".Rmd")))
+        }
+        notify(paste("File saved in", saveDir))
+      } else {
+        notify("No results available to save", type = "warning")
+      }
     }
   )
   
   # Load saved scenarios (overrides any scenarios that exist) ----
+  
+  # Output: Define GUI element to select model from a list -----------------
+  output$selectExistingScenarioFiles<- renderUI({
+    selectInput(
+      inputId = "scenFileToLoad",
+      selected = NULL,
+      label = NULL,
+      choices = list.files(path = file.path("./models", model$status$name, "scenarios"),
+                           recursive = TRUE,
+                           pattern ="*.Rmd")
+    )
+  })
   observeEvent(
-    input$scenFileToLoad,{
-      scenarios_loaded <- readRDS(input$scenFileToLoad$datapath)
-      scenarios$results <- scenarios_loaded$results
-      scenarios$parameters <- scenarios_loaded$parameters
-      scenarios$constraints <- scenarios_loaded$constraints
+    input$loadScenFile,{
+      # print(input$scenFileToLoad)
+      # scenarios_loaded <- readRDS(input$scenFileToLoad$datapath)
+      
+      if(input$scenFileToLoad ==""){
+        notify("No scenario file selected (there may be none in the folder, or there may be no model loaded)", type="warning")
+      } else {
+        scenarios_loaded <- readRDS(file.path("./models", model$status$name, "scenarios", input$scenFileToLoad))
+        scenarios$results <- scenarios_loaded$results
+        scenarios$parameters <- scenarios_loaded$parameters
+        scenarios$constraints <- scenarios_loaded$constraints
+        notify("Scenarios loaded from file")
+      }
     }
   )
 
@@ -919,14 +950,14 @@ shinyServer(function(input, output, session) {
   
   # Output model relations table (for preview) -------------------- 
   output$relationsTable <- DT::renderDataTable(
-    formatRelationTable(model$relations,model$concepts),  
+    formatRelationTable(model$relations,model$concepts),# %>% select(!c("Grouping")),  
     server = FALSE, 
     options = list(pageLength = 20)
   )
   
   # Output model relations table FOR EDITING -------------------- 
   output$relationsTableEditing <- DT::renderDataTable(
-    formatRelationTable(model$relations,model$concepts), 
+    formatRelationTable(model$relations,model$concepts),# %>% select(!c("Grouping")), 
     server = FALSE, 
     selection = list(mode = 'single', target = 'row'),#, selected = history$previousRowNum),
     options = list(paging = FALSE)
@@ -1069,7 +1100,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$selectScenarioYVar <- renderUI({
-    selectInput("scenarioPlotY", "Y Value Plotted", 
+    selectInput("scenarioPlotY", "Variable compared", 
                 choices = c("Concept value" = "value", 
                             "Difference from baseline scenario" = "difference", 
                             "Percentage difference from baseline" = "percent_diff"))
