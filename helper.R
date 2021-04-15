@@ -189,7 +189,7 @@ saveModel <- function(modelData) {
   modelName <- modelData$status$name
   dir <- file.path(".", "models", modelName)
   writeLines(prettify(toJSON(modelData$status, auto_unbox=TRUE)), file.path(dir, "status.json"))
-  writeLines(prettify(toJSON(modelData$concepts, auto_unbox=TRUE)), file.path(dir, "concepts.json"))
+  writeLines(prettify(toJSON(modelData$concepts, auto_unbox=TRUE, rownames = FALSE)), file.path(dir, "concepts.json"))
   writeLines(prettify(toJSON(modelData$relations, auto_unbox=TRUE)), file.path(dir, "relations.json"))
   writeLines(prettify(toJSON(as.list(modelData$weight_vals), auto_unbox=TRUE)), file.path(dir, "weight_vals.json"))
 }
@@ -267,6 +267,11 @@ formatRelationTable <- function(relations_ls,concepts_df,export=FALSE,use.full.n
   name_key <- concepts_df$name
   names(name_key) <- concepts_df$concept_id
   
+  # If there are no concepts to begin with, just output an empty data frame (there shouldn't be any relationships)
+  if (length(name_key)==0){
+    warning("No concepts present in the model")
+  } 
+  
   causal_vars <- extract_rel(relations_ls, "concept_id")
   affects_vars <- extract_rel(relations_ls, "concept_id", level="affected")
   rel_ks <- extract_rel(relations_ls, "k", level="affected")
@@ -276,7 +281,7 @@ formatRelationTable <- function(relations_ls,concepts_df,export=FALSE,use.full.n
     df <- data.frame(From = name_key[causal_vars],
                      To = name_key[affects_vars],
                      k = rel_ks,
-                     # Grouping = rel_group,
+                     Grouping = rel_group,
                      Type = rel_types,
                      Direction = extract_rel(relations_ls, "direction"),
                      Weight = extract_rel(relations_ls, "weight"),
@@ -285,7 +290,7 @@ formatRelationTable <- function(relations_ls,concepts_df,export=FALSE,use.full.n
     df <- data.frame(From = causal_vars,
                      To = affects_vars,
                      k = rel_ks,
-                     # Grouping = rel_group,
+                     Grouping = rel_group,
                      Type = rel_types,
                      Direction = extract_rel(relations_ls, "direction"),
                      Weight = extract_rel(relations_ls, "weight"),
@@ -732,8 +737,6 @@ parse_monte_carlo <- function(mc_list){
   print(df)
   return(df)
 }
-
-
 
 # Unfinished
 plot_monte_carlo <- function(df){

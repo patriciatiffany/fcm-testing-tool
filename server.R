@@ -47,11 +47,13 @@ shinyServer(function(input, output, session) {
   is <- reactiveValues(newconcept = FALSE)
   
   # Reactive object to store current selected effects (what are the relations corresponding to the currently selected causal concept?)
+  # (ie. what is selected in the Edit Relationships tab?)
   selectedfx <- reactiveValues(
       to = "", # <- a vector
       from = "",
       direction = "",
       strength = "",
+      grouping = 1,
       description = "")
   
   # Reactive object to store the settings for the current model simulation/run
@@ -141,6 +143,7 @@ shinyServer(function(input, output, session) {
     selectedfx$direction <- ""
     selectedfx$strength <- ""
     selectedfx$description <- ""
+    selectedfx$grouping <- 1
     run$results <- NULL
     run$parameters <- NULL
     run$constraints <- NULL
@@ -260,12 +263,26 @@ shinyServer(function(input, output, session) {
                     title = "Duplicate ID", 
                     content = "New concept ID is the same as an existing concept. Rename before updating.")
         return()        
+      } else if (input$conceptID == ""){
+        createAlert(session = session, anchorId = "blankConceptVariable", 
+                    title = "Blank ID", 
+                    content = "New concept ID must not be blank.")
+        return()     
       }
-      model$concepts <- model$concepts[c(1,1:nrow(model$concepts)),]
-      model$concepts$name[1] <- input$conceptName
-      model$concepts$concept_id[1] <- input$conceptID
-      model$concepts$description[1] <- input$conceptDesc
-      model$concepts$category[1] <- input$conceptCategory
+      
+      new_concept <- data.frame(name = input$conceptName, 
+                                concept_id = input$conceptID,
+                                description = input$conceptDesc,
+                                category = input$conceptCategory)
+      
+      model$concepts <- bind_rows(new_concept, model$concepts)
+      # if (nrow(model$concepts)>0){
+      #   model$concepts <- model$concepts[c(1,1:nrow(model$concepts)),]
+      # }
+      # model$concepts$name[1] <- input$conceptName
+      # model$concepts$concept_id[1] <- input$conceptID
+      # model$concepts$description[1] <- input$conceptDesc
+      # model$concepts$category[1] <- input$conceptCategory
       RowNum <- input$conceptsTableEditing_rows_selected
       updateConceptForm(RowNum)
     }
@@ -321,6 +338,12 @@ shinyServer(function(input, output, session) {
       # Get concept to be deleted
       RowNum <- input$conceptsTableEditing_rows_selected
       Var <- model$concepts$concept_id[RowNum]
+      
+      # If no rows selected, print a warning
+      if (is.null(RowNum)){
+        notify("Select a row in the table to delete", type = "warning")
+        return(NULL)
+      }
       
       # Remove concept from model concepts table
       model$concepts <- model$concepts[-RowNum,]
@@ -519,6 +542,17 @@ shinyServer(function(input, output, session) {
       #Save last model state in redobuffer
       saveLastState()
       
+      # If there are no concepts in the model, do nothing; same if information missing
+      if (length(model$concepts$name)==0){
+        return(NULL)
+      } else if (is.null(input$causalConcept) || is.null(input$affectedConcept)){
+        notify("To add/ update a relationship, make sure both causal and affect concepts are specified")
+        return(NULL)
+      } else if (is.null(input$relationsTableEditing_rows_selected) && flag_newRelation==FALSE){
+        notify("To add/ update a relationship, make sure both causal and affect concepts are specified")
+        return(NULL)
+      }
+      
       #Update Relation
       CausalConcept <- 
         model$concepts$concept_id[model$concepts$concept_id == input$causalConcept]
@@ -577,6 +611,13 @@ shinyServer(function(input, output, session) {
     {
       # Save last model state and relations inputs
       saveLastState()
+      
+      RowNum <- input$relationsTableEditing_rows_selected
+      # If no rows selected, print a warning
+      if (is.null(RowNum)){
+        notify("Select a row in the table to delete", type = "warning")
+        return(NULL)
+      }
       # Remove relation from model
       CausalConcept <- 
         model$concepts$concept_id[model$concepts$concept_id == input$causalConcept]
@@ -958,14 +999,14 @@ shinyServer(function(input, output, session) {
   
   # Output model relations table (for preview) -------------------- 
   output$relationsTable <- DT::renderDataTable(
-    formatRelationTable(model$relations,model$concepts),# %>% select(!c("Grouping")),  
+    formatRelationTable(model$relations,model$concepts) %>% select(-c("Grouping")), 
     server = FALSE, 
     options = list(pageLength = 20)
   )
   
   # Output model relations table FOR EDITING -------------------- 
   output$relationsTableEditing <- DT::renderDataTable(
-    formatRelationTable(model$relations,model$concepts),# %>% select(!c("Grouping")), 
+    formatRelationTable(model$relations,model$concepts) %>% select(-c("Grouping")), 
     server = FALSE, 
     selection = list(mode = 'single', target = 'row'),#, selected = history$previousRowNum),
     options = list(paging = FALSE)

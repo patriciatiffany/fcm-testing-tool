@@ -126,9 +126,8 @@ shinyUI(
                                           bsTooltip(id = "deleteConcept", title = "Deletes highlighted concept"),
                                           actionButton("undoConceptAction", "Undo"),
                                           bsTooltip(id = "undoConceptAction", title = "Toggles last action"),
-                                          bsAlert(
-                                            "duplicateConceptVariable"
-                                          )
+                                          bsAlert("duplicateConceptVariable"),
+                                          bsAlert("blankConceptVariable")
                                         ),
                                         actionButton("saveModel1","Save to file"),
                                         bsTooltip(id = "saveModel1", placement = "right", title = "Saves all edits to the /models folder (including any changes on other tabs)")
