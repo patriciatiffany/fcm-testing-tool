@@ -1,7 +1,7 @@
 [
   {
-    "name": "",
-    "concept_id": "",
+    "name": "Example 1",
+    "concept_id": "example1",
     "description": "",
     "values": {
       "min": "",
@@ -9,5 +9,16 @@
       "description": ""
     },
     "category": ""
-  }
+  },
+  {
+  "name": "Example 2",
+  "concept_id": "example2",
+  "description": "",
+  "values": {
+    "min": "",
+    "max": "",
+    "description": ""
+  },
+  "category": ""
+}
 ]

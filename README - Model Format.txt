@@ -79,11 +79,11 @@ This is an array of objects representing sets of converging/ incoming links. The
         "description": ""
       }
 
- — - links: an array of objects each representing a link. 
- - - - concept_id: the unique identifier (matching concepts.json) that represents the concept responsible of the influence. e.g. “warming”
- - - - direction: the direction of influence: “Positive” or “Negative”
- - - - weight: the relative strength of the link: “VL”, “L”, “M”, “H”, or “VH”
+	- links: an array of objects each representing a link. 
+		- concept_id: the unique identifier (matching concepts.json) that represents the concept responsible of the influence. e.g. “warming”
+		- direction: the direction of influence: “Positive” or “Negative”
+		- weight: the relative strength of the link: “VL”, “L”, “M”, “H”, or “VH”
 
- - - type: how the links in the set should be aggregated: “add” or “req”
- - - description (optional): extra information about the set of links
+	- type: how the links in the set should be aggregated: “add” or “req”
+	- description (optional): extra information about the set of links
 

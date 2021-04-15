@@ -1,4 +1,4 @@
-# READ ME: Using the app
+# READ ME: Using the app.
 # Written and last modified 2021/04/08 by Patricia
 
 0) Enter User Info
@@ -14,6 +14,8 @@ Here is where you upload, edit, or create a new model. In particular, you can ed
 The “Save model” button on each edit page will save all edits on the model thus far (including any changes on other tabs). The model is saved locally in the models/[modelName]/ folder.
 
 You can see what your model looks like visually with the “Visualize Model” tab. Note that this will produce an error if there no concepts exist in the model.
+
+Note: the creation of a new model requires the presence of templates in the models/ folder (!) do not touch this
 
 
 2) FCM Exploration
@@ -43,6 +45,8 @@ For each concept chosen, this will configure 3 simulations:
 2. a simulation in which that concept is constrained at 0 (or -1, depending on the thresholding function of choice, i.e. for tanh)
 3. a baseline scenario (a run with the same parameters, but no constraints).
 
+
+
 3) Compare Scenario Results
 Here is where you can view the results of multiple runs. This feature works best when you have a number of scenarios (sets of constraints) you would like to compare, along with its associated baseline (a simulation run with the same parameters, but no constraints).
 
@@ -57,26 +61,5 @@ At the bottom of the page, you will find a button to save the plots contents (re
 You can read the scenario data files directly into R, with the readRDS() function. For example: 
 df <- readRDS(“~/link/to/file.Rmd”)
 
-
-=====
-
-Terms:
-Concept Name
-ID
-Concept Description
-Category
-Causal Concept
-Affected Concept
-Causal Direction
-Causal Strength
-Inertia of affected concept (k)
-Logical conjunction (Type)
-Causal description
-Relation group number*
-
-
-Buttons:
-Save Model
-Edit weight values
 
 
