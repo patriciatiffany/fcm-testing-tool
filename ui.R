@@ -335,13 +335,27 @@ shinyUI(
                                   p("Launch multiple runs, each with a constraint added. Like in the other tabs, simulation parameters are defined in the sidebar, but here, any constraints set will be overridden."),
                                   p('For each concept selected, it will configure a simulation where that concept is constrained at 1 ("high"), another in which that concept is constrained at 0 or -1 ("low"), as well as a baseline (no constraints)'),
                                   uiOutput("selectConceptsForScenarios"),
-                                  bsTooltip(id ="selectConceptsForScenarios", title="Choose concepts for which you would like to test high/low scenarios"),
+                                  bsTooltip(id ="selectConceptsForScenarios", placement = "left", title="Choose concepts for which you would like to test high/low scenarios"),
                                   actionButton("runFCMMultipleConstraints", "Launch runs and save to scenario list for comparison"),
                                   bsTooltip(id ="runFCMMultipleConstraints", title="Runs and saves these results to tab (3) Compare Scenario Results")
                          ), # tabPanel: Parameter Sweep
-                         tabPanel("Run Monte Carlo",
+                         tabPanel("Test sensitivity to weights",
                                   br(),
-                                  actionButton('launchMonteCarlo', 'Launch Monte Carlo simulation')
+                                  h4("Run Monte Carlo Simulations"),
+                                  p('Not sure about the weights assigned for each relationship? Here, you can test out the simulation using randomly generated weights and see whether there is a large spread in results.'),
+                                  p('Try testing this with different sets of parameters, as this might affect how sensitive the results are to the quantitative relationship weights in the model.'),
+                                  p('Note: Results may take a minute to load...'),
+                                  br(),
+                                  actionButton('launchMonteCarlo', 'Launch Monte Carlo simulation'),
+                                  bsTooltip(id ="launchMonteCarlo", title="Runs 100 models with randomly generated weights (preserves signs)-- may take a minute or two, so click me once and wait!"),
+                                  hr(),
+                                  shinycssloaders::withSpinner(uiOutput("sliderMC")),
+                                  bsTooltip(id ="sliderMC", placement = "left", title="Slide me to highlight a different run in the set and display the weights associated with that model run"),
+                                  p(strong("Results (selected run highlighted):")),
+                                  plotOutput("monteCarloPlot"),
+                                  br(),
+                                  p(strong("Adjacency matrix for the selected model run:"), "Rows are the influencing concepts, columns are the affected concepts"),
+                                  tableOutput("adjMatrixTable")
                          ) # tabPanel: Monte Carlo
                  ) # tabsetPanel
                ) # mainPanel
@@ -383,20 +397,14 @@ shinyUI(
                  br(),
                  conditionalPanel(condition="input.scenarioPlotY != 'value'",
                                   span( textOutput('scenarioPlotWarning'), style="color:red")),
-                 plotOutput(outputId = "scenarioPlot", height = "650px"), #plotlyOutput
+                 shinycssloaders::withSpinner(plotOutput(outputId = "scenarioPlot", height = "650px")), #plotlyOutput
                  hr(),
-                 plotOutput(outputId = "scenarioPlotBars", height = "650px")
+                 shinycssloaders::withSpinner(plotOutput(outputId = "scenarioPlotBars", height = "650px"))
                 ), # tab: scenario results
                  tabPanel("Other views",
                           br(),
                           plotOutput(outputId = "scenarioPlotSlope", height = "650px")
-                 ), # tab: other views
-                tabPanel("Using Monte Carlo for baseline",
-                  br(),
-                  p("Explanation here, TBC"),
-                  # actionButton('launchMonteCarlo', 'Launch Monte Carlo simulation')
-                  # Note: this doesn't actually work here! because it requires params to be present as input
-                 )
+                 ) # tab: other views
               ),
                hr(),
                fluidRow(

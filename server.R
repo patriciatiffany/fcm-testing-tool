@@ -61,6 +61,9 @@ shinyServer(function(input, output, session) {
 
   # Create a reactive object to store scenario data in
   scenarios <- reactiveValues(results = list(), constraints = list(), parameters = list())
+  
+  # Create a reactive object to handle/ store monte carlo simulations
+  monte_carlo <- reactiveValues(models = list(), results = NULL)
 
   # === DEFINE COMMON FUNCTIONS FOR MODIFYING REACTIVE VALUES ----- ===================
   # Function to save the model in history
@@ -851,8 +854,14 @@ shinyServer(function(input, output, session) {
   # Run monte carlo simulation ------------
   observeEvent(
     input$launchMonteCarlo, {
-      mc_list <- run_monte_carlo(model, isolate(run_params()), isolate(run$constraints))
-      parse_monte_carlo(mc_list)
+      if (is.null(model$relations)){
+        notify("No model loaded. Please load a model before proceeding.", type="warning")
+        return(NULL)
+      } else {
+        mc_list <- run_monte_carlo(model, isolate(run_params()), isolate(run$constraints))
+        monte_carlo$models <- mc_list$models
+        monte_carlo$results <- parse_monte_carlo(mc_list$results)
+      }
     }
   )
   
@@ -1120,7 +1129,31 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  # Collate scenario comparison data for all scenarios selected  -------------------- 
+  # (2c) Monte Carlo simulations
+  # Slider input for monte carlo selection ----
+  output$sliderMC <- renderUI({
+    if (length(monte_carlo$models)>0){
+      sliderInput("selectedMC", "Simulation number:", min = 1, length(monte_carlo$models), value = 1)
+    }
+  })
+  
+  # Output table of model weights --------
+  output$adjMatrixTable <- renderTable(
+    if (length(monte_carlo$models)>0 && !is.null(input$selectedMC)){
+      tbl <- monte_carlo$models[[input$selectedMC]]$weight_num
+      tbl[tbl == 0] <- NA
+      return(tbl)
+      }, rownames = TRUE, na = "", bordered = TRUE, hover = TRUE)
+  
+  # Output monte carlo results ------
+  output$monteCarloPlot <- renderPlot(
+    if (length(monte_carlo$models)>0 && !is.null(input$selectedMC)){
+    plot_monte_carlo(monte_carlo$results, input$selectedMC)
+    }
+  )
+
+  
+  # (3) Collate scenario comparison data for all scenarios selected  -------------------- 
   scenarioComparison <- eventReactive(
     c(input$launchScenarioView, input$resetScenarios, input$startModeling),{ # only evaluate when button is pressed and/or things are reset
       if (length(input$scenariosToPlot)>0 && length(scenarios$results)>0){

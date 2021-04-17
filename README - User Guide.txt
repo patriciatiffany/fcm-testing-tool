@@ -30,7 +30,7 @@ When you have selected your parameters and constraints of choice, click the “R
 
 Once the run is complete, if you’d like to save this scenario for future use (i.e. to compare with other runs in “3) Compare Scenario Results”), click on the “Add to scenario comparisons” button. The scenario name field auto-populates with a name that contains information on the constraints applied, the thresholding function used (exp or tanh or linear), and the h (h), lambda (L), and initial values (i) used. 
 
-On the “Run Results” tab, you can run different parameter combinations one at a time. 2 other tabs exist for your convenience / specific use cases. 
+On the “Run Results” tab, you can run different parameter combinations one at a time. A few other tabs exist for your convenience / specific use cases:
 
 “Configure Multiple Runs” tab:
 Use this tab when you want to test different values of a single parameter (h, lambda, or initial simulation values), e.g. in sensitivity analyses. If there are any conflicts, this parameter “sweep” will override values selected in the sidebar. Type the values you’d like to run in the “Values” textbox as numbers, separated by commas.
@@ -46,6 +46,12 @@ For each concept chosen, this will configure 3 simulations:
 3. a baseline scenario (a run with the same parameters, but no constraints).
 
 
+“Test sensitivity to weights” tab:
+Use this tab to test out the model simulation using randomly generated weights and see whether there is a large spread in results. This is especially useful if you are not sure about the accuracy of validity of the quantitative weights associated with each of the relationships. Try testing this with different sets of parameters, as this might affect how sensitive the results are to the quantitative relationship weights in the model.
+
+This “monte carlo simulation” runs 100 models with identical structure and relationship directions (positive/ negative), but with randomly generated weights, and displays the results. This process may take a minute or two, so clicking only once and waiting is advised.
+
+You may use the slider to a highlight a specific run in the monte carlo simulation and view what the adjacency matrix (weights) look like for that particular model run.
 
 3) Compare Scenario Results
 Here is where you can view the results of multiple runs. This feature works best when you have a number of scenarios (sets of constraints) you would like to compare, along with its associated baseline (a simulation run with the same parameters, but no constraints).

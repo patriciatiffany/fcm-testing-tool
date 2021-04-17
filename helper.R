@@ -595,13 +595,14 @@ run_model <- function(model, params, constraints = NULL, encode = FALSE, random=
 #---------------#
 run_monte_carlo <- function(model, params, constraints, mc_iterations = 100){
   results = vector("list", mc_iterations)
+  model_matrices = vector("list", mc_iterations)
   for (i in 1:mc_iterations){
-    model_matrices <- generate_matrices(model, random=TRUE)
-    results[[i]] <- fcm_wrapper(model_matrices, params, constraints, encode = TRUE) %>% 
+    model_matrices[[i]] <- generate_matrices(model, random=TRUE) #  model_matrices <- generate_matrices(model, random=TRUE)
+    results[[i]] <- fcm_wrapper(model_matrices[[i]], params, constraints, encode = TRUE) %>% 
       mutate(mc=i)
   } # loop over monte carlo simulations
   
-  return(results)
+  return(list(models = model_matrices, results = results))
 }
 
 #------------#
@@ -733,19 +734,28 @@ tidy_slope_graph <- function(joined_df){
 #-------------#
 
 parse_monte_carlo <- function(mc_list){
-  df <- bind_rows(mc_list, .id="mc") #lapply(mc_list, function(x) x[nrow(x),])
-  print(df)
+  df <- bind_rows(mc_list, .id="mc")
+  df <- tidyr::pivot_longer(df, !c(timestep, h, lambda, infer_type, init, mc), names_to = "concept", values_to = "value")
   return(df)
 }
 
 # Unfinished
-plot_monte_carlo <- function(df){
-  ggplot(df %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = ~value, colour = ~scenario_name)) + 
-    geom_point(show.legend = TRUE) + facet_wrap(vars(concept)) + 
-    theme(panel.spacing.y = unit(2, "lines")) + theme_minimal() +
-    theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
-          axis.ticks.x=element_blank()) + 
-    geom_hline(yintercept = 0, color = "black")
+plot_monte_carlo <- function(df, i){
+  plot <- ggplot() + 
+    geom_line(aes(x = timestep, y = value, group = mc), colour = alpha("grey", 0.7), data = df %>% filter(mc!=i)) + 
+    geom_line(aes(x = timestep, y = value), colour = alpha("black", 1), data = df %>% filter(mc==i), size=1.5) +
+    facet_wrap(vars(concept)) + theme_minimal() + 
+    theme(panel.spacing.y = unit(2, "lines")) + 
+    labs(title = "Concept values over time")#, colour = "Scenario")
+  
+  return(plot)
+  
+  # ggplot(df %>% filter(timestep==max(timestep)), aes_(x = ~scenario_name, y = ~value, colour = ~scenario_name)) + 
+  #   geom_point(show.legend = TRUE) + facet_wrap(vars(concept)) + 
+  #   theme(panel.spacing.y = unit(2, "lines")) + theme_minimal() +
+  #   theme(axis.title.x=element_blank(), axis.text.x=element_blank(),
+  #         axis.ticks.x=element_blank()) + 
+  #   geom_hline(yintercept = 0, color = "black")
 }
 
 # PLOTS =========================
