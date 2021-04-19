@@ -939,7 +939,7 @@ shinyServer(function(input, output, session) {
   # Save current scenarios into a file ----
   observeEvent(
     input$saveScenarios,{
-      if (length(scenarios$results > 0)){
+      if (length(scenarios$results) > 0){
         scenarios_save <- list(results = scenarios$results, 
                                constraints = scenarios$constraints, 
                                parameters = scenarios$parameters)
@@ -948,7 +948,7 @@ shinyServer(function(input, output, session) {
         if (input$scenFileName == ""){
           notify("Please enter a file name", type = "warning")
         } else {
-          saveRDS(scenarios_save, file = file.path(saveDir, paste0(input$scenFileName,".Rmd")))
+          saveRDS(scenarios_save, file = file.path(saveDir, paste0(input$scenFileName,".rds")))
         }
         notify(paste("File saved in", saveDir))
       } else {
@@ -967,7 +967,7 @@ shinyServer(function(input, output, session) {
       label = NULL,
       choices = list.files(path = file.path("./models", model$status$name, "scenarios"),
                            recursive = TRUE,
-                           pattern ="*.Rmd")
+                           pattern ="*.rds")
     )
   })
   observeEvent(
@@ -1177,7 +1177,7 @@ shinyServer(function(input, output, session) {
   # Notification when scenario comparison data saved -------------------- 
   observeEvent(input$saveScenarioData,{
     saveDir <- file.path("models", model$status$name, "analysis")
-    saveRDS(scenarioComparison(), file = file.path(saveDir, paste0(input$scenDataFileName,".Rmd")))
+    saveRDS(scenarioComparison(), file = file.path(saveDir, paste0(input$scenDataFileName,".rds")))
     notify(paste("File saved in", saveDir))
   })
   
