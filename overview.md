@@ -18,9 +18,9 @@ In order for the iterative FCM algorithm to produce valid outputs, the choice of
 
 In this modified FCM, we introduce logical conjunctions to reflect "required" (shorthand: `REQ`) relationships as well as "additive" (shorthand: `ADD`) relationships. Here, we define the algorithm such that the `REQ` inference takes the *minimum* of all influences to feed in the squashing function ($x$ above), while the `ADD` inference takes in the *mean* of the influences. 
 
-Our algorithm then becomes $C_j^{t+1} = f_j \left(\mathrm{A}(\vec{C}^{t}) \right)$, where $\mathrm{A}$ is an aggregation function defined as $\frac{1}{m+1} k_j C_j^{t} + \mathrm{min}(\{C_i^{t} w_{ij}: w_{ij} \neq 0\})$ for `REQ` relation types, and $\frac{1}{m+1}\left(k_j C_j^{t} + \sum_{i=1}^n C_i^{t} w_{ij} \right)$ for `AND` relation types, where $m$ is the number of non-zero links influencing $C_j$, i.e. $m=\sum_{i:w_{ij} \neq 0} 1$. 
+Our algorithm then becomes $C_j^{t+1} = f_j \left(\mathrm{A}(\vec{C}^{t}) \right)$, where $\mathrm{A}$ is an aggregation function defined as $\frac{1}{m} k_j C_j^{t} + \mathrm{min}(\{C_i^{t} w_{ij}: w_{ij} \neq 0\})$ for `REQ` relation types, and $\frac{1}{m}\left(k_j C_j^{t} + \sum_{i=1}^n C_i^{t} w_{ij} \right)$ for `AND` relation types, where $m$ is the number of non-zero links influencing $C_j$, i.e. $m=\sum_{i:w_{ij} \neq 0} 1$. 
 
-The algorithm also supports `OR` relation types, where $\mathrm{A}:= \frac{1}{m+1} k_j C_j^{t} + \mathrm{max}(\{C_i^{t} w_{ij}: w_{ij} \neq 0\})$, though it remains untested as of the writing of this description.
+The algorithm also supports `OR` relation types, where $\mathrm{A}:= \frac{1}{m} k_j C_j^{t} + \mathrm{max}(\{C_i^{t} w_{ij}: w_{ij} \neq 0\})$, though it remains untested as of the writing of this description. If there are no influences, $\mathrm{A}(\vec{C}^{t}) = k_j C_j^{t}$.
 
 The code for this algorithm can be found in the file `fcm.R`. This code was adapted from [this R package](https://cran.r-project.org/web/packages/fcm/index.html) by Dikopoulou and Papageorgiou.
 
