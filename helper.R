@@ -489,6 +489,19 @@ makeDot <-
     labels_to_plot <- adj_mx_list$weight[Cr,Cc]
     types_to_plot <- adj_mx_list$type[Cr,Cc]
     
+    
+    k_df <- merge(concepts_df["concept_id"], 
+                  data.frame(concept_id=sapply(relations_ls, "[[", "concept_id"), 
+                             k=sapply(relations_ls, "[[", "k")), all.x = TRUE)
+    ks <- as.numeric(k_df$k)
+    names(ks) <- k_df$concept_id
+    
+    # types_df <- merge(concepts_df["concept_id"], 
+    #               data.frame(concept_id=extract_rel(relations_ls, "concept_id", level = "affected"), 
+    #                          type=extract_rel(relations_ls, "type", level = "causal_group")), all.x = TRUE) %>% unique()
+    # types <- types_df$type
+    # names(types) <- types_df$concept_id
+    
     #Update Cr and Cc and identify unique concepts
     Cr <- rownames(rels_to_plot)
     Cc <- colnames(rels_to_plot)
@@ -501,7 +514,8 @@ makeDot <-
     for (concept in concepts_to_plot) {
       c_ <- gsub("\\-","\\_",concept) # replace hyphens with underscores for proper grViz syntax
       l_ <- gsub("([[:punct:]])", "\\\\\\1", name_key[concept]) # escape punctuation characters in node labels
-      Dot_ <- paste(Dot_, c_, "[ shape =", shape, ", label =\"", l_,"\"];\n")
+      k_label <- ifelse(is.na(ks[concept]), "", paste0("\n k=",ks[concept]))
+      Dot_ <- paste(Dot_, c_, "[ shape =", shape, ", label =\"", l_, k_label,"\"];\n")
     }
     for (cr in Cr) {
       for (cc in Cc) {
