@@ -248,7 +248,8 @@ shinyUI(
                                           choices = c("Sigmoid (Logistic)"="sigmoid-exp","Sigmoid (Tanh)"="sigmoid-tanh","Linear (f(x) = x-h)"="linear"), selected="sigmoid-exp"),
                               bsTooltip(id = "selectFCM_fn", placement = "top", title = "Once influences are aggregated, what type of thresholding function should they be passed through?"),
                               plotOutput("FCMFunction", height = "250px"),
-                              sliderInput("sliderFCM_h", "Choose h", min=-1, max=1, step = 0.25, value = 0), 
+                              # sliderInput("sliderFCM_h", "Choose h", min=-1, max=1, step = 0.25, value = 0), 
+                              uiOutput("sliderFCM_h"),
                               bsTooltip(id = "sliderFCM_h", placement = "right", title = "Corresponds to the threshold point (x offset)"),
                               conditionalPanel(
                                 condition = "input.selectFCM_fn != 'linear'",

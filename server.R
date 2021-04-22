@@ -1096,10 +1096,15 @@ shinyServer(function(input, output, session) {
     h <- input$sliderFCM_h
     lambda <- input$sliderFCM_lambda
     switch(input$selectFCM_fn,
-           "sigmoid-exp" =  curve(1/(1 + exp(-lambda * (x - h))), from = -1, to = 1, ylim = c(0,1)),
+           "sigmoid-exp" =  curve(1/(1 + exp(-lambda * (x - h))), from = 0, to = 1, ylim = c(0,1)),
            "sigmoid-tanh" = curve(tanh(lambda * (x - h)), from = -1, to = 1, ylim = c(-1,1)),
            "linear" = curve((x - h), from = -1, to = 1, ylim = c(-1,1))
     )
+  })
+
+  # Default value for the h slider should depend on the thresholding function selected
+  output$sliderFCM_h <- renderUI({
+    sliderInput("sliderFCM_h", "Choose h", min=-1, max=1, step = 0.25, value = ifelse(input$selectFCM_fn == "sigmoid-exp", 0.5, 0))
   })
   
   # Output table displaying parameters used for run -------------------- 
