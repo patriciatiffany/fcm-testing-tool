@@ -308,10 +308,44 @@ shinyServer(function(input, output, session) {
         
         # Update model concepts
         RowNum <- input$conceptsTableEditing_rows_selected
+        oldID <- model$concepts$concept_id[RowNum]
         model$concepts$name[RowNum] <- input$conceptName
         model$concepts$concept_id[RowNum] <- input$conceptID
         model$concepts$description[RowNum] <- input$conceptDesc
         model$concepts$category[RowNum] <- input$conceptCategory
+        
+        # Also need to update all relationships that have the old conceptID:
+        tbl <- isolate(relationstable()) # Get relationstable for reference
+        rename_links_to <- tbl[tbl$From == oldID, "To"]
+        
+        # Get variables in the model that are affected by something (in relations list)
+        ExistingAffected <-
+          unlist(lapply(model$relations, function(x) x$concept_id))
+
+        # Update relationships that have this as "from"
+        for (a_idx in 1:length(ExistingAffected)){
+          if (ExistingAffected[a_idx] == oldID){
+            model$relations[[a_idx]]$concept_id <- input$conceptID
+            View(model$relations)
+          }
+          
+          # Update relationships that have this as "to"
+          for (affectingID in rename_links_to){
+            if (ExistingAffected[a_idx] == affectingID){
+              for (g in 1:length(model$relations[[a_idx]]$affected_by)){
+                  links <- model$relations[[a_idx]]$affected_by[[g]]$links
+                  ExistingLinked <- unlist(lapply(links, function(x) x$concept_id)) # All links to the affected concept
+                  c_idx <- which(ExistingLinked == oldID)
+                  if (length(c_idx)>0){
+                    model$relations[[a_idx]]$affected_by[[g]]$links[[c_idx]]$concept_id <- input$conceptID
+                  }
+              }
+            }
+          }
+          
+        }
+        
+        
       }
 
       model$status$lastedit <- as.character(Sys.time())
