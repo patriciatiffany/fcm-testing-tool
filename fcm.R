@@ -89,19 +89,18 @@ fcm.run <- function (mx, rel_type_mx, rel_group_mx, cn, iter,
       self_infl <- (k_ * act_vector[i - 1, ]) # influence from previous timestep
       num_influences <- apply(act_vector, 2, function(x) sum(!is.na(x))) # count the non NAs 
       
-      if (num_influences > 0){
-        if (tolower(rel_type) == "req" || tolower(rel_type) == "and"){ 
-          infl = (self_infl/(num_influences)) + apply(contrb, 2, function(x) ifelse(all(is.na(x)), 0, min(x,na.rm=TRUE))) # doesn't work if there are negative links
-        } else if (tolower(rel_type) == "add" || tolower(rel_type)=="lookup"){ # temporarily lump "lookup" in this category 2019/08/20
-          infl = (self_infl + apply(contrb, 2, function(x) ifelse(all(is.na(x)), 0, sum(x,na.rm=TRUE)))) / (num_influences) # switched to sum, and divide manually by number of influences (2021/02/25) # previously, used mean for these additive relationships 2019/08/20
-        } else if (tolower(rel_type) == "or"){
-          infl = (self_infl/(num_influences)) + apply(contrb, 2, function(x) ifelse(all(is.na(x)), 0, max(x,na.rm=TRUE))) # find maximum of element-wise product of the weight matrix and the values of the influencing variables
-        } else {
-          # Currently corresponds to what it was previously (in the fcm package), where it would have been simply below: infl_vector = (act_vector[i - 1, ] %*% mx) 
-          infl <- self_infl + apply(contrb, 2, function(x) sum(x,na.rm=TRUE)) 
-        }
+      num_influences_adjusted <- num_influences
+      num_influences_adjusted[num_influences == 0] <- 1
+
+      if (tolower(rel_type) == "req" || tolower(rel_type) == "and"){ 
+        infl = (self_infl/(num_influences_adjusted)) + apply(contrb, 2, function(x) ifelse(all(is.na(x)), 0, min(x,na.rm=TRUE))) # doesn't work if there are negative links
+      } else if (tolower(rel_type) == "add" || tolower(rel_type)=="lookup"){ # temporarily lump "lookup" in this category 2019/08/20
+        infl = (self_infl + apply(contrb, 2, function(x) ifelse(all(is.na(x)), 0, sum(x,na.rm=TRUE)))) / (num_influences_adjusted) # switched to sum, and divide manually by number of influences (2021/02/25) # previously, used mean for these additive relationships 2019/08/20
+      } else if (tolower(rel_type) == "or"){
+        infl = (self_infl/(num_influences_adjusted)) + apply(contrb, 2, function(x) ifelse(all(is.na(x)), 0, max(x,na.rm=TRUE))) # find maximum of element-wise product of the weight matrix and the values of the influencing variables
       } else {
-        infl <- self_infl
+        # Currently corresponds to what it was previously (in the fcm package), where it would have been simply below: infl_vector = (act_vector[i - 1, ] %*% mx) 
+        infl <- self_infl + apply(contrb, 2, function(x) sum(x,na.rm=TRUE)) 
       }
       
       infl_vector <- infl_vector + infl # <- If more than one set of causal concepts exists for a single concept, may need to rethink this approach.
