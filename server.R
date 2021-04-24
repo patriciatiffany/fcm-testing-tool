@@ -666,7 +666,8 @@ shinyServer(function(input, output, session) {
       if ((length(ExistingAffected)>0) && (AffectedConcept %in% ExistingAffected)){
         # Find where to delete
         a_idx <- which(ExistingAffected == AffectedConcept)
-        links <- model$relations[[a_idx]]$affected_by[[selectedfx$grouping]]$links
+        g <- selectedfx$grouping[selectedfx$to == AffectedConcept]
+        links <- model$relations[[a_idx]]$affected_by[[g]]$links
         ExistingLinked <- unlist(lapply(links, function(x) x$concept_id))
         if (length(ExistingLinked)>0 && CausalConcept %in% ExistingLinked){
           c_idx <- which(ExistingLinked == CausalConcept)
@@ -674,9 +675,9 @@ shinyServer(function(input, output, session) {
           c_idx <- length(ExistingLinked) + 1
         }
         # Remove link, and if that was the only link, remove link group or/ and affected concept from the list of relations
-        model$relations[[a_idx]]$affected_by[[selectedfx$grouping]]$links[[c_idx]] <- NULL
-        if (length(model$relations[[a_idx]]$affected_by[[selectedfx$grouping]]$links) == 0){
-          model$relations[[a_idx]]$affected_by[[selectedfx$grouping]] <- NULL
+        model$relations[[a_idx]]$affected_by[[g]]$links[[c_idx]] <- NULL
+        if (length(model$relations[[a_idx]]$affected_by[[g]]$links) == 0){
+          model$relations[[a_idx]]$affected_by[[g]] <- NULL
           if (length(model$relations[[a_idx]]$affected_by) == 0){
             model$relations[[a_idx]] <- NULL
           }

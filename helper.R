@@ -345,11 +345,13 @@ makeAdjacencyMatrices <- function(relations_ls, c_ids) {
         for (j in 1:length(infl_list)){ 
           links <- infl_list[[j]]$links # list of links in that set of influences
           infls <- sapply(links, function(x) x$concept_id) 
-          for (e in edge_vars){
-            mx_list[[e]][infls, id] <- sapply(links, '[[', e)
+          if (length(infls) > 0){
+            for (e in edge_vars){
+              mx_list[[e]][infls, id] <- sapply(links, '[[', e)
+            }
+            mx_list[["type"]][infls, id] <- infl_list[[j]]$type # Corresponding type for that set of links (and/or etc.)
+            mx_list[["rel_group"]][infls, id] <- j
           }
-          mx_list[["type"]][infls, id] <- infl_list[[j]]$type # Corresponding type for that set of links (and/or etc.)
-          mx_list[["rel_group"]][infls, id] <- j
         }
       }
     }
