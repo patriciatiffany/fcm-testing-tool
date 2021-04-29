@@ -1,6 +1,6 @@
-# fcm_testing_tool
+# fcm-testing-tool
 
-The Qualitative Systems Modeller (fcm_testing_tool) is an application for modelling qualitative, directed graphs. A directed graph is composed of 'nodes' and 'edges', where nodes are concepts that are being modeled and edges specify relationships between concepts .
+The Qualitative Systems Modeller (fcm-testing-tool) is an application for modelling qualitative, directed graphs. A directed graph is composed of 'nodes' and 'edges', where nodes are concepts that are being modeled and edges specify relationships between concepts .
 
 The direction of each edge specifies the relationship between influencing and affected concepts, with edge weights specify the strength ("very low" to "very high") and directionality ("positive" or "negative") of the influence. A positive sign for an edge weight means that an increase in the influencing (or "causal") concept generally causes an increase in the affected concept.
 
