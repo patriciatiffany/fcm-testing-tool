@@ -42,7 +42,8 @@ shinyUI(
                withMathJax(includeMarkdown("overview.md")),
                hr(),
                h4("Credits"),
-               p('This application was loosely built based upon code from the', a("Logic Laboratory (FSDM)", href="https://rdrr.io/github/gregorbj/FSDM/"), ', open-source R Shiny application developed by Brian Gregor (Oregon Systems Analytics), 2016.')
+               p('This application was loosely built based upon code from the', a("Logic Laboratory (FSDM)", href="https://rdrr.io/github/gregorbj/FSDM/"), ', open-source R Shiny application developed by Brian Gregor (Oregon Systems Analytics), 2016.'),
+               p('The FCM algorithm code was adapted from an existing', a('fcm R package', href="https://cran.r-project.org/web/packages/fcm/index.html"), 'by Dikopoulou and Papageorgiou.')
              )
     ),
     # User Info -------------------
