@@ -1,3 +1,5 @@
+# This code was adapted from https://cran.r-project.org/web/packages/fcm/index.html,
+# an R package by Dikopoulou and Papageorgiou.
 
 fcm.run <- function (mx, rel_type_mx, rel_group_mx, cn, iter, 
                      set.concepts=NULL, set.values=NULL, 

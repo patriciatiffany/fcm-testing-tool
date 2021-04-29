@@ -1,3 +1,8 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
 #### Background
 
 To explain how the algorithm works, we'll use some terminology from the "Fuzzy" Cognitive Mapping (FCM) literature:
